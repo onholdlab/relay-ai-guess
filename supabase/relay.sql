@@ -16,6 +16,8 @@ create table if not exists public.relay_secret (
   id int primary key default 1 check (id = 1),
   ai_slot int not null check (ai_slot between 2 and 7)
 );
+alter table public.relay_secret add column if not exists ops jsonb;
+alter table public.relay_secret add column if not exists model text;
 create table if not exists public.relay_meta (
   id int primary key default 1 check (id = 1),
   revealed boolean not null default false,
@@ -66,7 +68,8 @@ language sql stable security definer set search_path = public as $$
         'busy', px is null and device is not null and (device = 'ORG' or last_at > now() - interval '30 minutes'),
         'mineAt', case when device = p_device then (extract(epoch from claimed_at) * 1000)::bigint end
       ) order by n), '[]'::jsonb) from relay_slots),
-    'meta', (select jsonb_build_object('revealed', revealed, 'aiSlot', case when revealed then ai_slot end) from relay_meta where id = 1),
+    'meta', (select jsonb_build_object('revealed', revealed, 'aiSlot', case when revealed then ai_slot end,
+        'aiOps', case when revealed then (select ops from relay_secret where id = 1) end) from relay_meta where id = 1),
     'votes', (select coalesce(jsonb_agg(jsonb_build_object(
         'r', r, 'g', g, 'c', c, 'pre', pre, 'ar', ar, 'nd', n_done, 'rr', rr, 'post', post, 'me', device = p_device)), '[]'::jsonb) from relay_votes),
     'notes', (select coalesce(jsonb_agg(jsonb_build_object('t', t, 'at', (extract(epoch from at) * 1000)::bigint) order by at), '[]'::jsonb) from relay_notes),
