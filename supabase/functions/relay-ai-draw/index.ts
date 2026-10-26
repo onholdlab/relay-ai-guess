@@ -64,12 +64,15 @@
 
 // ----
 const S = (globalThis as any).Strokes;
-const URL_ = Deno.env.get("SUPABASE_URL")!, SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const URL_ = Deno.env.get("SUPABASE_URL")!;
+// 新版專案用 sb_secret_ 金鑰,舊版用 service_role JWT;兩種都支援
+const SRK = Deno.env.get("SUPABASE_SECRET_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const AUTH: Record<string, string> = SRK.startsWith("sb_") ? { apikey: SRK } : { apikey: SRK, Authorization: "Bearer " + SRK };
 const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const MODEL = Deno.env.get("RELAY_AI_MODEL") || "claude-sonnet-5-5";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const reply = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
-const db = (path: string, init: RequestInit = {}) => fetch(URL_ + "/rest/v1/" + path, { ...init, headers: { apikey: SRK, Authorization: "Bearer " + SRK, "Content-Type": "application/json", Prefer: "return=representation", ...(init.headers || {}) } }).then(async r => { if (!r.ok) throw new Error(path + " " + r.status + " " + await r.text()); return r.json(); });
+const db = (path: string, init: RequestInit = {}) => fetch(URL_ + "/rest/v1/" + path, { ...init, headers: { ...AUTH, "Content-Type": "application/json", Prefer: "return=representation", ...(init.headers || {}) } }).then(async r => { if (!r.ok) throw new Error(path + " " + r.status + " " + await r.text()); return r.json(); });
 async function sha256(t: string) { const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join(""); }
 
 const PALETTE = ["0 白 #F4F6F8", "1 淺灰 #C9D1D9", "2 灰 #7C8896", "3 深灰 #2B3440", "4 近黑 #0B1220", "5 紅 #E5484D", "6 橘 #F76B15", "7 琥珀 #FFB400", "8 黃 #F5E663", "9 淺綠 #8BD450", "10 綠 #2EA043", "11 青 #2AC4B3", "12 藍 #2F4BFF", "13 紫 #6E56CF", "14 粉 #E26BD1", "15 棕 #8B5A3C"];
