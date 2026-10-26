@@ -151,15 +151,39 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid 
 </section>
 </main>
 <script>
-(function(){if(window.claude)return;window.__solo=true;
-const st=JSON.parse(localStorage.getItem('soloState')||'{}');
-const subs=[];
-const coll=n=>Object.keys(st).filter(k=>k.startsWith(n+'/')&&k.split('/').length===2).map(k=>({id:k.split('/')[1],data:()=>st[k]}));
-const fire=()=>{try{localStorage.setItem('soloState',JSON.stringify(st))}catch(e){}subs.forEach(f=>f())};
-const doc=p=>({set:async d=>{st[p]=d;fire()},update:async d=>{st[p]=Object.assign({},st[p],d);fire()},delete:async()=>{delete st[p];fire()},get:async()=>({exists:!!st[p],data:()=>st[p]}),acquire:async()=>({acquired:true}),onSnapshot:f=>{const g=()=>f({exists:!!st[p],data:()=>st[p]});subs.push(g);setTimeout(g,0)}});
-const db={doc,collection:n=>({onSnapshot:f=>{const g=()=>f({docs:coll(n)});subs.push(g);setTimeout(g,0)}})};
-const me='owner';
-window.claude={use:async n=>n==='db'?db:n==='user'?{id:async()=>me,isOwner:async()=>me==='owner',can:async()=>true}:null};
+(function(){
+if(window.claude)return;window.__supa=true;
+const URL='https://zfghylavaxulytlbbxqi.supabase.co',KEY='sb_publishable_13fkPXai231g3G0JU4mWhA_G_hctIxL';
+let dev=null;try{dev=localStorage.getItem('ohl-device')}catch(e){}
+if(!dev||dev.length<8){dev=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,12);try{localStorage.setItem('ohl-device',dev)}catch(e){}}
+const tok=()=>{try{return localStorage.getItem('relay-host')||null}catch(e){return null}};
+async function rpc(fn,a){const r=await fetch(URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(a||{})});if(!r.ok){let m='';try{m=(await r.json()).message}catch(e){}throw new Error(m||'http_'+r.status)}const t=await r.text();return t?JSON.parse(t):null}
+let S=null,first=null;const L={slots:[],votes:[],notes:[],meta:[],secret:[]};
+function fire(){if(!S)return;
+ const sl=S.slots.map(x=>({id:'s'+x.n,data:()=>({n:x.n,px:x.px,claimedBy:x.mine?dev:(x.px||x.busy?'x':null),claimedAt:x.mineAt||0,lastAt:x.busy||x.px?Date.now():0})}));
+ const vs=S.votes.map((x,i)=>({id:x.me?dev:'v'+i,data:()=>x}));
+ const nt=[{id:'all',data:()=>({items:S.notes})}];
+ const meta={revealed:!!S.meta.revealed,aiSlot:S.meta.aiSlot};const ai=S.host&&S.host.aiSlot;
+ L.slots.forEach(f=>f({docs:sl}));L.votes.forEach(f=>f({docs:vs}));L.notes.forEach(f=>f({docs:nt}));
+ L.meta.forEach(f=>f({exists:true,data:()=>meta}));L.secret.forEach(f=>f({exists:!!ai,data:()=>({n:ai})}));
+}
+async function poll(){try{S=await rpc('relay_state',{p_device:dev,p_token:tok()});fire()}catch(e){}}
+first=poll();setInterval(()=>{if(!document.hidden)poll()},5000);
+function doc(p){const[c,id]=p.split('/'),n=+String(id).slice(1);return{
+ acquire:async()=>({acquired:true}),
+ get:async()=>{const x=S&&S.slots.find(y=>'s'+y.n===id);return{exists:!!x,data:()=>x?{n:x.n,px:x.px,claimedBy:x.mine?dev:(x.px||x.busy?'x':null),lastAt:x.busy?Date.now():0}:null}},
+ set:async d=>{
+  if(c==='slots'){if(d.claimedBy==='ORG')await rpc(d.px?'relay_upload':'relay_reserve',d.px?{p_token:tok(),p_px:d.px}:{p_token:tok(),p_n:n});else if(d.px)await rpc('relay_submit',{p_device:dev,p_n:n,p_px:d.px});else await rpc('relay_claim',{p_device:dev,p_n:n,p_token:tok()})}
+  else if(c==='votes')await rpc('relay_vote',{p_device:dev,p_r:d.r,p_g:d.g,p_c:d.c,p_pre:d.pre});
+  else if(c==='notes'){const it=d.items[d.items.length-1];await rpc('relay_note',{p_device:dev,p_t:it.t})}
+  else if(c==='meta')await rpc('relay_reveal',{p_token:tok()});
+  await poll()},
+ update:async d=>{if(c==='slots')return rpc('relay_beat',{p_device:dev,p_n:n});if(c==='votes'){await rpc('relay_post',{p_device:dev,p_rr:d.rr,p_post:d.post});await poll()}},
+ delete:async()=>{if(c==='slots')await rpc('relay_release',{p_token:tok(),p_n:n});else if(c==='meta')await rpc('relay_reset',{p_token:tok()});else return;await poll()},
+ onSnapshot:f=>{(c==='meta'?L.meta:L.secret).push(f);fire()}
+}}
+const db={doc,collection:c=>({onSnapshot:f=>{L[c].push(f);fire()}})};
+window.claude={use:async k=>k==='db'?db:k==='user'?{id:async()=>dev,isOwner:async()=>{await first;return!!(S&&S.host)},can:async()=>true}:null};
 })();
 </script>
 <script>
@@ -425,7 +449,7 @@ async function boot(){
  }catch(e){}
  if(!db||!uid){msg('需要登录并被主办方邀请后才能使用。');rD();return}
  $('#tO').hidden=!owner;
- if(window.__solo)document.querySelector('main>.sub').textContent='单机试玩版：你一个人当8位画手和主办方，资料只存在这个浏览器。多人版在 Claude 上内测中。';
+ if(window.__supa&&location.hash==='#host'&&!owner){$('#tO').hidden=false;const c=E('div','card'),r=E('div','row'),i=E('input'),b=E('button','on','进入主办方');i.id='hk';i.type='password';i.placeholder='主办方密语';i.autocomplete='off';b.onclick=()=>{try{localStorage.setItem('relay-host',i.value)}catch(e){}location.reload()};r.append(i,b);c.append(E('p',0,'输入你在 Supabase 设定的密语。'),r);$('#vO').prepend(c)}
  db.collection('slots').onSnapshot(s=>{slots={};s.docs.forEach(d=>slots[d.id]=d.data());sync()},()=>msg('读取失败，请刷新页面。'));
  db.collection('votes').onSnapshot(s=>{votes={};s.docs.forEach(d=>votes[d.id]=d.data());rG();rO()},()=>{});
  db.collection('notes').onSnapshot(s=>{notes={};s.docs.forEach(d=>notes[d.id]=d.data());rTalk()},()=>{});
