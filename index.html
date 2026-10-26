@@ -143,6 +143,12 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid 
   <p><canvas id="oPrev" width="48" height="64"></canvas></p>
   <button id="oUse"></button>
   <div class="row"><button id="oDraw" class="on" hidden></button><span class="sub" id="oDrawMsg"></span></div>
+  <div id="oManual" hidden>
+   <p class="sub" id="i6"></p>
+   <div class="row"><button id="oCopy"></button></div>
+   <textarea id="oOps" spellcheck="false"></textarea>
+   <div class="row"><button id="oOpsPrev"></button><button id="oOpsUse" class="on"></button><span class="sub" id="oOpsMsg"></span></div>
+  </div>
  </div>
  <div class="card">
   <button id="oRev"></button>
@@ -185,6 +191,7 @@ function doc(p){const[c,id]=p.split('/'),n=+String(id).slice(1);return{
  onSnapshot:f=>{(c==='meta'?L.meta:L.secret).push(f);fire()}
 }}
 const db={doc,collection:c=>({onSnapshot:f=>{L[c].push(f);fire()}})};
+window.__aiStrokes=async(px,ops)=>{await rpc('relay_upload_strokes',{p_token:tok(),p_px:px,p_ops:ops});await poll()};
 window.__aiDraw=async()=>{const r=await fetch(URL+'/functions/v1/relay-ai-draw',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({token:tok()})});const j=await r.json().catch(()=>({}));await poll();if(!r.ok)throw new Error(j.error||('http_'+r.status));return j};
 window.claude={use:async k=>k==='db'?db:k==='user'?{id:async()=>dev,isOwner:async()=>{await first;return!!(S&&S.host)},can:async()=>true}:null};
 })();
@@ -194,7 +201,7 @@ const EN=(()=>{let l=null;try{l=localStorage.getItem('lang')}catch(e){}return(l|
 (function(){const q=x=>document.querySelector(x);document.documentElement.lang=EN?'en':'zh-Hant';document.title=tr('8棒接力：哪一棒是AI？','8-Leg Relay: Which One Is AI?');
 [['#i0','8棒接力','8-Leg Relay'],['#i1','8棒裡有1棒是AI畫的，揭曉前沒人知道是哪一棒。','One of the 8 legs was drawn by AI. Nobody knows which until the reveal.'],['#tG','長卷與猜測','Scroll & guess'],['#tD','畫一棒','Draw a leg'],['#tO','主辦方','Host'],['#tL','EN','中文'],
 ['#i2','左邊半透明的那一條，是上一棒最右邊的6格。從虛線右邊開始畫，讓兩棒的畫面接起來。','The faded strip on the left is the last 6 columns of the previous leg. Start drawing right of the dashed line so the two legs connect. '],['#i3','電腦快捷鍵：B畫筆、E橡皮擦、G填色、I滴管（或Alt加點擊）、L直線、U矩形、O橢圓、H抓手（或按住空白鍵拖動）、[ ]調筆刷、Ctrl加Z復原、Shift加點擊連直線。','Shortcuts: B pen, E eraser, G fill, I picker (or Alt+click), L line, U rect, O ellipse, H hand (or hold Space), [ ] brush size, Ctrl+Z undo, Shift+click for a straight line.'],['#i4','雙指捏合縮放，雙指拖動平移。','Pinch to zoom, drag with two fingers to pan.'],
-['#send','交出這一棒','Submit this leg'],['#oRes','預留為AI棒','Reserve as AI leg'],['#i5','預留後其他人只會看到「進行中」。等上一棒畫完，截圖尾端交給圖像工具續畫，再上傳結果。上傳時會自動清掉孤立的單個像素。','Others will only see “in progress”. When the previous leg is done, give a screenshot of its tail to an image tool, then upload the result. Stray single pixels are removed on upload.'],['#oUse','用這張圖當AI那棒','Use this image as the AI leg'],['#oDraw','讓8號畫這一棒','Let No. 8 draw this leg'],['#oRev','揭曉','Reveal'],['#oClr','清空全部重來','Clear everything']
+['#send','交出這一棒','Submit this leg'],['#oRes','預留為AI棒','Reserve as AI leg'],['#i5','預留後其他人只會看到「進行中」。等上一棒畫完，截圖尾端交給圖像工具續畫，再上傳結果。上傳時會自動清掉孤立的單個像素。','Others will only see “in progress”. When the previous leg is done, give a screenshot of its tail to an image tool, then upload the result. Stray single pixels are removed on upload.'],['#oUse','用這張圖當AI那棒','Use this image as the AI leg'],['#oDraw','讓8號畫這一棒','Let No. 8 draw this leg'],['#i6','沒有 API 金鑰時：複製指令貼到 Claude 聊天，把它回的 JSON 貼回下面。','Without an API key: copy the instructions into a Claude chat, then paste the JSON it returns below.'],['#oCopy','複製給8號的指令','Copy instructions for No. 8'],['#oOpsPrev','預覽','Preview'],['#oOpsUse','用這些筆畫當AI那棒','Use these strokes as the AI leg'],['#oRev','揭曉','Reveal'],['#oClr','清空全部重來','Clear everything']
 ].forEach(([k,z,e])=>{const el=q(k);if(el)el.textContent=tr(z,e)});
 q('#tL').onclick=()=>{try{localStorage.setItem('lang',EN?'zh':'en');sessionStorage.setItem('rtab',typeof tab==='string'?tab:'G');sessionStorage.setItem('rsel',String(typeof sel==='number'?sel:1))}catch(e){}location.reload()}})();
 
@@ -436,6 +443,10 @@ $('#oFile').onchange=e=>{
   const[o,n]=despeckle(q);upIso=n;upPx=Array.from(o,v=>v.toString(16)).join('');put2($('#oPrev').getContext('2d'),upPx,0);rO()};im.src=fr.result};
  fr.readAsDataURL(f);
 };
+let opsPx=null,opsList=null;
+$('#oCopy').onclick=async()=>{const t=Strokes.prompt(Strokes.tailOf(S(ai.n-1).px)),m=$('#oOpsMsg');try{await navigator.clipboard.writeText(t);m.textContent=tr('已複製。','Copied.')}catch(e){const ta=$('#oOps');ta.value=t;ta.select();m.textContent=tr('無法自動複製，指令已放進框裡，請手動複製後清空。','Could not copy automatically. The text is in the box; copy it, then clear the box.')}};
+$('#oOpsPrev').onclick=()=>{const m=$('#oOpsMsg');opsPx=null;try{const raw=$('#oOps').value,j=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1));opsList=Strokes.clean(j.strokes);if(opsList.length<5)throw 0;opsPx=Strokes.render(opsList);put2($('#oPrev').getContext('2d'),opsPx,0);m.textContent=tr('共'+opsList.length+'筆，預覽在上面的框。','Parsed '+opsList.length+' strokes. Preview is in the box above.')}catch(e){m.textContent=tr('讀不懂這段 JSON，請貼上 Claude 回覆的完整內容。','Could not read that JSON. Paste the whole reply from Claude.')}};
+$('#oOpsUse').onclick=async()=>{const m=$('#oOpsMsg');if(!opsPx){$('#oOpsPrev').click();if(!opsPx)return}try{await window.__aiStrokes(opsPx,opsList);m.textContent=tr('8號那棒已上傳。','No. 8’s leg is uploaded.');$('#oOps').value=''}catch(e){m.textContent=tr('上傳失敗：','Upload failed: ')+e.message}};
 $('#oDraw').onclick=async()=>{const od=$('#oDraw'),m=$('#oDrawMsg');od.dataset.busy='1';rO();m.textContent=tr('8號在畫，約需半分鐘…','No. 8 is drawing, about 30 seconds…');try{const j=await window.__aiDraw();m.textContent=tr('畫好了，共'+j.strokes+'筆。','Done in '+j.strokes+' strokes.')}catch(e){m.textContent=tr('沒畫成：','Failed: ')+e.message}od.dataset.busy='';rO()};
 $('#oUse').onclick=async()=>{const t=Date.now();try{await db.doc('slots/s'+ai.n).set({n:ai.n,claimedBy:'ORG',claimedAt:t,lastAt:t,px:upPx,doneAt:t});msg(tr('AI那棒已上傳。','AI leg uploaded.'))}catch(e){msg(tr('上傳失敗，請重試。','Upload failed. Try again.'))}};
 two($('#oRev'),tr('再點一次，確認揭曉','Tap again to confirm the reveal'),async()=>{try{await db.doc('meta/state').set({revealed:true,aiSlot:ai.n})}catch(e){msg(tr('揭曉失敗，請重試。','Reveal failed. Try again.'))}});
@@ -445,6 +456,7 @@ function rO(){
  $('#oInfo').textContent=(ai?tr('AI那棒（只有你看得到）：第'+ai.n+'棒，','AI leg (only you can see this): leg '+ai.n+', ')+(done(ai.n)?tr('圖已上傳。','image uploaded.'):tr('還沒上傳圖。','no image yet.')):tr('還沒設定AI那棒。','AI leg not set yet.'))+(upPx?tr(' 預覽已清掉'+upIso+'個孤立像素。',' Preview removed '+upIso+' stray pixels.'):'')+tr(' 已有'+Object.keys(votes).length+'人提交。',' '+Object.keys(votes).length+' submitted.');
  $('#oRes').disabled=$('#oSel').disabled=!!ai;
  $('#oUse').disabled=!(ai&&upPx&&!done(ai.n));
+ const okPrev=!!(ai&&ai.n>1&&done(ai.n-1)&&!done(ai.n));$('#oManual').hidden=!(window.__aiStrokes&&window.Strokes&&okPrev);
  const od=$('#oDraw');od.hidden=!window.__aiDraw;od.disabled=!(ai&&ai.n>1&&done(ai.n-1)&&!done(ai.n))||od.dataset.busy==='1';
  $('#oRev').disabled=!(ai&&all())||!!meta.revealed;
  const r=$('#oRel');r.textContent='';

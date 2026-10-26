@@ -1,6 +1,6 @@
 // 8號畫一棒:讀上一棒最右邊6格,請 Claude 用筆畫畫完這一棒,存進 AI 那棒。
 // 需要的 secret:ANTHROPIC_API_KEY。SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY 由 Supabase 自動提供。
-// ---- 筆畫執行(與 js/strokes.js 相同) ----
+// ---- 筆畫執行與給 8號的指令(與 js/strokes.js 相同) ----
 /* 8號的筆畫:AI 輸出繪圖動作,用跟真人一樣的工具執行。瀏覽器與 Supabase Edge Function 共用。
    stroke 格式:
    {tool:"pen"|"erase", color:0-15, size:1-4, points:[[x,y],...]}   連續筆畫
@@ -58,7 +58,31 @@
     }
     return Array.from(cur, function (v) { return v.toString(16); }).join('');
   }
-  var api = { clean: clean, render: render, W: W, H: H, MAX: MAX };
+  /* 給 8號的指令:只附上一棒最右邊 6 欄(tail 是 64 行、每行 6 個 16 進位字元) */
+  const PALETTE = ["0 白 #F4F6F8", "1 淺灰 #C9D1D9", "2 灰 #7C8896", "3 深灰 #2B3440", "4 近黑 #0B1220", "5 紅 #E5484D", "6 橘 #F76B15", "7 琥珀 #FFB400", "8 黃 #F5E663", "9 淺綠 #8BD450", "10 綠 #2EA043", "11 青 #2AC4B3", "12 藍 #2F4BFF", "13 紫 #6E56CF", "14 粉 #E26BD1", "15 棕 #8B5A3C"];
+  function prompt(tail) {
+    return `你在玩一個接力畫畫遊戲。每個人畫一段 48 格寬、64 格高的像素畫,接在上一段的右邊,拼成一幅長卷。你只看得到上一段最右邊的 6 欄。
+  你的任務:接著上一段畫完你這一段,讓畫面在接縫處自然接上,之後自由發揮,畫一段有內容、看起來像玩家在手機上大約花 10 分鐘畫出來的作品。
+  
+  規則:
+  - 只能用這 16 色,用編號表示:
+  ${PALETTE.join("\n")}
+  - 畫布起始是全白(0)。座標 x 0-47(左到右)、y 0-63(上到下)。你的 x=0 緊接在上一段 x=47 的右邊。
+  - 只能用下面的工具,一筆一筆畫(和玩家用的工具一樣):
+    {"tool":"pen","color":C,"size":1-4,"points":[[x,y],...]}  連續筆畫,點與點之間自動連線
+    {"tool":"erase","size":1-4,"points":[[x,y],...]}
+    {"tool":"line","color":C,"size":1-4,"from":[x,y],"to":[x,y]}
+    {"tool":"rect" 或 "ellipse","color":C,"size":1-4,"from":[x,y],"to":[x,y],"solid":true 或 false}
+    {"tool":"fill","color":C,"at":[x,y]}  油漆桶,只會填滿相連的同色區域;邊界沒封好會漏出去
+  - 筆數 25 到 90 筆。不要寫字。
+  
+  上一段最右邊 6 欄(每行是一個 y,由上到下;每個字元是那一格的顏色編號,用 16 進位 0-f):
+  ${tail.join("\n")}
+  
+  只輸出一個 JSON 物件,不要任何其他文字:{"strokes":[...]}`;
+  }
+  function tailOf(px) { var t = []; for (var y = 0; y < H; y++) t.push(px.slice(y * W + W - 6, y * W + W)); return t; }
+  var api = { clean: clean, render: render, prompt: prompt, tailOf: tailOf, W: W, H: H, MAX: MAX };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Strokes = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -74,29 +98,6 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const reply = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const db = (path: string, init: RequestInit = {}) => fetch(URL_ + "/rest/v1/" + path, { ...init, headers: { ...AUTH, "Content-Type": "application/json", Prefer: "return=representation", ...(init.headers || {}) } }).then(async r => { if (!r.ok) throw new Error(path + " " + r.status + " " + await r.text()); return r.json(); });
 async function sha256(t: string) { const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join(""); }
-
-const PALETTE = ["0 白 #F4F6F8", "1 淺灰 #C9D1D9", "2 灰 #7C8896", "3 深灰 #2B3440", "4 近黑 #0B1220", "5 紅 #E5484D", "6 橘 #F76B15", "7 琥珀 #FFB400", "8 黃 #F5E663", "9 淺綠 #8BD450", "10 綠 #2EA043", "11 青 #2AC4B3", "12 藍 #2F4BFF", "13 紫 #6E56CF", "14 粉 #E26BD1", "15 棕 #8B5A3C"];
-function prompt(tail: string[]) {
-  return `你在玩一個接力畫畫遊戲。每個人畫一段 48 格寬、64 格高的像素畫,接在上一段的右邊,拼成一幅長卷。你只看得到上一段最右邊的 6 欄。
-你的任務:接著上一段畫完你這一段,讓畫面在接縫處自然接上,之後自由發揮,畫一段有內容、看起來像玩家在手機上大約花 10 分鐘畫出來的作品。
-
-規則:
-- 只能用這 16 色,用編號表示:
-${PALETTE.join("\n")}
-- 畫布起始是全白(0)。座標 x 0-47(左到右)、y 0-63(上到下)。你的 x=0 緊接在上一段 x=47 的右邊。
-- 只能用下面的工具,一筆一筆畫(和玩家用的工具一樣):
-  {"tool":"pen","color":C,"size":1-4,"points":[[x,y],...]}  連續筆畫,點與點之間自動連線
-  {"tool":"erase","size":1-4,"points":[[x,y],...]}
-  {"tool":"line","color":C,"size":1-4,"from":[x,y],"to":[x,y]}
-  {"tool":"rect" 或 "ellipse","color":C,"size":1-4,"from":[x,y],"to":[x,y],"solid":true 或 false}
-  {"tool":"fill","color":C,"at":[x,y]}  油漆桶,只會填滿相連的同色區域;邊界沒封好會漏出去
-- 筆數 25 到 90 筆。不要寫字。
-
-上一段最右邊 6 欄(每行是一個 y,由上到下;每個字元是那一格的顏色編號,用 16 進位 0-f):
-${tail.join("\n")}
-
-只輸出一個 JSON 物件,不要任何其他文字:{"strokes":[...]}`;
-}
 
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -115,7 +116,7 @@ Deno.serve(async req => {
     if (me?.px) return reply({ error: "already_done" }, 400);
     const tail: string[] = []; for (let y = 0; y < 64; y++) tail.push(prev.px.slice(y * 48 + 42, y * 48 + 48));
     const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: "user", content: prompt(tail) }] }) });
+      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: "user", content: S.prompt(tail) }] }) });
     const j = await r.json();
     if (!r.ok) return reply({ error: "model_failed", detail: j?.error?.message || r.status }, 502);
     const text = (j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");

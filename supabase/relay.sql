@@ -177,6 +177,21 @@ begin
   return found;
 end $$;
 
+-- 手動版:主辦方把聊天裡 Claude 給的筆畫貼進網頁,網頁執行後連同筆畫一起上傳
+create or replace function public.relay_upload_strokes(p_token text, p_px text, p_ops jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare k int;
+begin
+  if not relay_is_host(p_token) then raise exception 'not_host'; end if;
+  select ai_slot into k from relay_secret where id = 1;
+  if k is null or not exists (select 1 from relay_slots where n = k - 1 and px is not null) then raise exception 'not_ready'; end if;
+  if jsonb_typeof(p_ops) <> 'array' or jsonb_array_length(p_ops) > 300 then raise exception 'bad_input'; end if;
+  update relay_slots set px = p_px, done_at = now(), last_at = now() where n = k and px is null;
+  if not found then raise exception 'already_done'; end if;
+  update relay_secret set ops = p_ops, model = 'chat' where id = 1;
+  return true;
+end $$;
+
 create or replace function public.relay_reveal(p_token text) returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
@@ -210,7 +225,7 @@ revoke all on function public.relay_is_host(text) from public, anon, authenticat
 grant execute on function
   public.relay_state(text, text), public.relay_claim(text, int, text), public.relay_beat(text, int),
   public.relay_submit(text, int, text), public.relay_vote(text, jsonb, int, int, int), public.relay_post(text, int, int),
-  public.relay_note(text, text), public.relay_reserve(text, int), public.relay_upload(text, text),
+  public.relay_note(text, text), public.relay_reserve(text, int), public.relay_upload(text, text), public.relay_upload_strokes(text, text, jsonb),
   public.relay_reveal(text), public.relay_release(text, int), public.relay_reset(text)
 to anon, authenticated;
 
