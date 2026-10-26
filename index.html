@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="zh-Hans"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>8棒接力：哪一棒是AI？</title>
+<style>
+:root{--bg:#EEF1F4;--panel:#fff;--ink:#16202C;--mute:#5E6B7A;--line:#CBD3DC;--acc:#2F4BFF;--on:#fff;--mark:#FFB400;--bad:#C2255C;--stage:#DDE3EA;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151C;--panel:#18202A;--ink:#E8EDF2;--mute:#97A3B0;--line:#2B3644;--acc:#8C9BFF;--on:#0B1020;--mark:#FFC53D;--bad:#FF7AA8;--stage:#8E9AA8}}
+:root[data-theme="dark"]{--bg:#10151C;--panel:#18202A;--ink:#E8EDF2;--mute:#97A3B0;--line:#2B3644;--acc:#8C9BFF;--on:#0B1020;--mark:#FFC53D;--bad:#FF7AA8;--stage:#8E9AA8}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}
+.sub{color:var(--mute);font-size:14px;margin:4px 0 10px}
+.tabs,.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:40px;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.on{background:var(--acc);color:var(--on);border-color:var(--acc)}
+button:disabled{opacity:.45;cursor:default}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.card p{margin:6px 0}
+#msg{min-height:22px;color:var(--bad);font-size:14px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.inner{position:relative;width:1152px;height:192px}
+.inner canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.seg{position:absolute;top:0;bottom:0;width:12.5%;border:0;border-left:1px solid var(--line);border-radius:0;background:transparent;min-height:0;padding:4px 6px;text-align:left;vertical-align:top;font-size:13px;text-shadow:0 0 3px var(--panel),0 0 3px var(--panel)}
+.seg.empty{background:repeating-linear-gradient(135deg,transparent 0 8px,var(--line) 8px 9px)}
+.seg.sel{outline:3px solid var(--acc);outline-offset:-3px}
+.seg.guess{box-shadow:inset 0 0 0 7px var(--mark)}
+.seg.ai{box-shadow:inset 0 0 0 7px var(--bad)}
+.chip{padding:2px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px}
+.cvw{position:relative;touch-action:none}
+#cv{display:block;width:100%;aspect-ratio:54/64;image-rendering:pixelated;border:1px solid var(--line);touch-action:none;background:var(--panel)}
+.sepl{position:absolute;top:0;bottom:0;left:11.111%;border-left:2px dashed var(--mark);pointer-events:none}
+.vp{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.vp #cv{border:0}
+.grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(127,127,127,.4) 1px,transparent 1px),linear-gradient(to bottom,rgba(127,127,127,.4) 1px,transparent 1px);background-size:calc(100%/54) 100%,100% calc(100%/64)}
+.pal{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:10px 0}
+.sw{aspect-ratio:1;min-height:32px;padding:0;border:2px solid var(--line)}
+.sw.on{outline:3px solid var(--acc);outline-offset:1px}
+.tm{font-variant-numeric:tabular-nums;font-size:20px;font-weight:700}
+.tm.low{color:var(--bad)}
+#oPrev{width:192px;height:256px;image-rendering:pixelated;border:1px solid var(--line)}
+button{touch-action:manipulation}
+#dBody{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.kbd,.tch{display:none}
+.hov{position:absolute;pointer-events:none;outline:1px solid #fff;box-shadow:0 0 0 2px #000}
+@media(hover:hover) and (pointer:fine){.kbd{display:inline}}
+@media(pointer:coarse){.tch{display:inline}button{min-height:44px}.sw{min-height:40px}}
+@media(max-width:640px){
+main:has(#dBody:not([hidden]))>h1,main:has(#dBody:not([hidden]))>.sub{display:none}
+.dock{position:sticky;bottom:0;margin:0 -16px;padding:8px 16px calc(6px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+.dock .pal{display:flex;overflow-x:auto;margin:0 0 6px}
+.dock .sw{flex:0 0 40px}
+#tools,#opts{flex-wrap:nowrap;overflow-x:auto;margin:6px 0}
+#tools button,#opts button{flex:0 0 auto}
+#send{width:100%}
+.vp{max-height:calc(100vh - 380px);max-height:calc(100dvh - 380px)}
+}
+@media(min-width:641px){
+main{max-width:900px}
+.inner{width:100%;height:auto;aspect-ratio:6}
+#dBody{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;align-items:start}
+#dBody>.sub{grid-column:1/-1;margin:0}
+#dBody .vp{grid-column:1;max-height:calc(100vh - 210px);max-height:calc(100dvh - 210px)}
+.dock{grid-column:2;grid-row:2;position:sticky;top:12px}
+.pal{grid-template-columns:repeat(4,1fr)}
+.sw{aspect-ratio:auto;height:44px}
+#tools,#opts{display:grid;grid-template-columns:1fr 1fr}
+#st{grid-column:1/-1}
+#send{width:100%}
+}
+@media(min-width:1100px){
+main{max-width:1180px}
+#dBody{grid-template-columns:minmax(0,1fr) 320px}
+#dBody .vp{max-height:calc(100vh - 190px)}
+}
+@media(min-width:1100px) and (pointer:fine){.pal{grid-template-columns:repeat(8,1fr)}.sw{height:32px;min-height:0}}
+.trow{display:contents}
+.cc,.hb{display:none}
+#msg:empty{display:none}
+.who{display:flex;gap:12px;align-items:center}
+.who canvas{width:40px;height:60px;image-rendering:pixelated;flex:none;border-radius:8px;background:var(--stage)}
+.who p{margin:0;font-size:14px}
+textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;min-height:64px;resize:vertical}
+.nt{border-top:1px solid var(--line);padding:6px 0;margin:0;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.nt:first-of-type{border-top:0}
+@media(max-width:640px){
+.dr{display:flex;flex-direction:column;height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));padding:0}
+.dr>.tabs{display:none}
+.dr>#msg{position:fixed;left:8px;right:8px;top:52px;z-index:5;margin:0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.dr #vD{display:flex;flex-direction:column;flex:1;min-height:0}
+.dr #dHead{display:flex;align-items:center;gap:6px;margin:0;padding:4px 8px;border-radius:0;border-width:0 0 1px}
+.dr #dHead .tm{margin-right:auto;font-size:18px}
+.dr .hb{display:block;min-height:36px;padding:2px 8px;font-size:14px}
+.dr #dBody{display:flex;flex-direction:column;flex:1;min-height:0}
+.dr #dBody>.sub{display:none}
+.dr #dBody .vp{flex:1;min-height:0;max-height:none;display:flex;border-width:0;border-radius:0}
+.dr .cvw{flex:none;margin:auto}
+.dr .dock{position:relative;margin:0;padding:4px 8px calc(4px + env(safe-area-inset-bottom,0px))}
+.dr #send,.dr #opts button:nth-child(-n+2){display:none}
+.dr .trow{display:flex;gap:6px;overflow-x:auto}
+.dr #tools,.dr #opts{display:flex;flex:none;flex-wrap:nowrap;margin:0;overflow:visible}
+.dr .cc{display:block;flex:0 0 44px;min-height:40px;border:2px solid var(--ink)}
+.dr #tools button,.dr #opts button{min-height:40px}
+.dr .pal{display:none}
+.dr.pp .pal{display:grid;position:absolute;left:8px;right:8px;bottom:100%;grid-template-columns:repeat(8,1fr);padding:8px;margin:0 0 6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:6}
+.dr.pp .pal .sw{flex:none;height:40px}
+}
+</style></head>
+<body><main>
+<h1>8棒接力</h1>
+<p class="sub">8棒里有1棒是AI画的，揭晓前没人知道是哪一棒。</p>
+<div class="tabs"><button id="tG" class="on">长卷与猜测</button><button id="tD">画一棒</button><button id="tO" hidden>主办方</button></div>
+<div id="msg" role="status"></div>
+
+<section id="vG">
+ <div class="card who"><canvas id="av" width="16" height="24"></canvas><p id="whoT"></p></div>
+ <div class="scroll"><div class="inner"><canvas id="big" width="384" height="64"></canvas><div id="segs"></div></div></div>
+ <p class="sub" id="hint"></p>
+ <div class="card" id="pick"></div>
+ <div class="card" id="fin"></div>
+ <div class="card" id="talk" hidden></div>
+</section>
+
+<section id="vD" hidden>
+ <div class="card" id="dHead"></div>
+ <div id="dBody" hidden>
+  <p class="sub">虚线左边是上一棒的尾端，从这里接着画。<span class="kbd">电脑上可用快捷键：B画笔、E橡皮、G填色、I吸管（或Alt加点击）、L直线、U矩形、O椭圆、H抓手（或按住空格拖动）、[ ]调笔刷、Ctrl加Z撤销、Shift加点击连直线。</span><span class="tch">双指捏合缩放，双指拖动平移。</span></p>
+  <div class="vp" id="vp"><div class="cvw" id="cvw"><canvas id="cv" width="54" height="64"></canvas><div class="sepl"></div><div class="grid" id="grid" hidden></div><div class="hov" id="hov" hidden></div></div></div>
+  <div class="dock"><div class="pal" id="pal"></div>
+  <div class="trow"><div class="row" id="tools"></div><div class="row" id="opts"></div></div>
+  <button id="send" class="on">交出这一棒</button></div>
+ </div>
+</section>
+
+<section id="vO" hidden>
+ <div class="card">
+  <p id="oInfo"></p>
+  <div class="row"><select id="oSel"></select><button id="oRes">预留为AI棒</button></div>
+  <p class="sub">预留后其他人只会看到「进行中」。等上一棒画完，截图尾端交给图像工具续画，再上传结果。上传时会自动清掉孤立的单个像素。</p>
+  <input type="file" id="oFile" accept="image/*">
+  <p><canvas id="oPrev" width="48" height="64"></canvas></p>
+  <button id="oUse">用这张图当AI那棒</button>
+ </div>
+ <div class="card">
+  <button id="oRev">揭晓</button>
+  <div class="row" id="oRel"></div>
+  <button id="oClr">清空全部重来</button>
+ </div>
+</section>
+</main>
+<script>
+(function(){if(window.claude)return;window.__solo=true;
+const st=JSON.parse(localStorage.getItem('soloState')||'{}');
+const subs=[];
+const coll=n=>Object.keys(st).filter(k=>k.startsWith(n+'/')&&k.split('/').length===2).map(k=>({id:k.split('/')[1],data:()=>st[k]}));
+const fire=()=>{try{localStorage.setItem('soloState',JSON.stringify(st))}catch(e){}subs.forEach(f=>f())};
+const doc=p=>({set:async d=>{st[p]=d;fire()},update:async d=>{st[p]=Object.assign({},st[p],d);fire()},delete:async()=>{delete st[p];fire()},get:async()=>({exists:!!st[p],data:()=>st[p]}),acquire:async()=>({acquired:true}),onSnapshot:f=>{const g=()=>f({exists:!!st[p],data:()=>st[p]});subs.push(g);setTimeout(g,0)}});
+const db={doc,collection:n=>({onSnapshot:f=>{const g=()=>f({docs:coll(n)});subs.push(g);setTimeout(g,0)}})};
+const me='owner';
+window.claude={use:async n=>n==='db'?db:n==='user'?{id:async()=>me,isOwner:async()=>me==='owner',can:async()=>true}:null};
+})();
+</script>
+<script>
+const T=8,W=48,H=64,G=6,IDLE=18e5,BEAT=6e4;
+const PAL=["#F4F6F8","#C9D1D9","#7C8896","#2B3440","#0B1220","#E5484D","#F76B15","#FFB400","#F5E663","#8BD450","#2EA043","#2AC4B3","#2F4BFF","#6E56CF","#E26BD1","#8B5A3C"];
+const RGB=PAL.map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)));
+const AV=[".....hhhhhh.....", "....hhhhhhhh....", "....hyyhhyyh....", "....hssssssh....", "....skssssks....", "....ssssssss....", "....skwwwwks....", ".....skkkks.....", "......ssss......", "...pppwwwwppp...", "..pppppwwppppp..", ".ppppppwwpppppp.", ".pp.pyyyyyyp.pp.", ".pp.pppppppp.pp.", ".ss.pppmmppp.ss.", "....pppmmppp....", "....ppp..ppp....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "...wwkk..kkww...", "...kkkk..kkkk...", "................"],AVC={h:4,y:7,s:15,k:4,w:0,p:14,m:13};
+const $=s=>document.querySelector(s),E=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+let db,uid,owner=false,canW=null,slots={},votes={},notes={},meta={},ai=null,upPx=null,upIso=0;
+let tab='G',sel=1,myR={},myG=null,myC=2,myPre=0,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
+const msg=t=>$('#msg').textContent=t||'';
+const S=n=>slots['s'+n]||null,done=n=>!!(S(n)&&S(n).px),busy=n=>!!(S(n)&&S(n).claimedBy&&!S(n).px);
+const stale=d=>!d.px&&d.claimedBy!=='ORG'&&Date.now()-(d.lastAt||d.claimedAt)>IDLE;
+const nDone=()=>{let c=0;for(let n=1;n<=T;n++)if(done(n))c++;return c},all=()=>nDone()===T,myV=()=>uid?votes[uid]:null;
+const seen=()=>!!(meta.revealed&&myV());
+const nxt=()=>{for(let n=1;n<=T;n++){const d=S(n);if(!d||!d.claimedBy||stale(d))return n===1||done(n-1)?n:0}return 0};
+const nextUnrated=()=>{for(let i=1;i<=T;i++){const n=(sel-1+i)%T+1;if(done(n)&&!myR[n])return n}return 0};
+const avg=a=>a.length?a.reduce((p,q)=>p+q,0)/a.length:0;
+const scale=(lab,v,f,dis)=>{const w=E('div'),r=E('div','row');w.append(E('p',0,lab),r);for(let k=1;k<=5;k++){const b=E('button',v===k?'on':'',k);b.disabled=!!dis;b.onclick=()=>f(k);r.append(b)}return w};
+
+function put2(cx,px,ox){const id=cx.createImageData(W,H),d=id.data;for(let i=0;i<W*H;i++){const p=RGB[parseInt(px[i],16)]||RGB[0];d[i*4]=p[0];d[i*4+1]=p[1];d[i*4+2]=p[2];d[i*4+3]=255}cx.putImageData(id,ox,0)}
+(function(){const cx=$('#av').getContext('2d'),id=cx.createImageData(16,24),d=id.data;AV.forEach((r,y)=>[...r].forEach((ch,x)=>{if(ch==='.')return;const p=RGB[AVC[ch]],k=(y*16+x)*4;d[k]=p[0];d[k+1]=p[1];d[k+2]=p[2];d[k+3]=255}));cx.putImageData(id,0,0)})();
+
+/* gallery */
+function rG(){
+ const cx=$('#big').getContext('2d'),sg=$('#segs'),v=myV(),K=meta.aiSlot;cx.clearRect(0,0,T*W,H);sg.textContent='';
+ $('#hint').textContent=(matchMedia('(max-width:640px)').matches?'横向滑动看完整长卷。':'')+(all()&&!myV()?'点一棒来打分。':'');
+ $('#whoT').textContent=seen()?'AI画手「8号」画的是第'+K+'棒。':'AI画手「8号」藏在这8棒里，只画了一棒。揭晓前没人知道是哪一棒。';
+ for(let n=1;n<=T;n++){
+  if(done(n))put2(cx,S(n).px,(n-1)*W);
+  const b=E('button','seg'+(done(n)?'':' empty')+(n===sel?' sel':'')+(myG===n||(v&&v.g===n)?' guess':'')+(seen()&&K===n?' ai':''),done(n)?n:n+(busy(n)?' 进行中':' 待画'));
+  b.style.left=(n-1)*12.5+'%';b.onclick=()=>{sel=n;rG()};sg.append(b);
+ }
+ rP();rF();rTalk();
+}
+function rP(){
+ const c=$('#pick');c.textContent='';const v=myV(),lock=!!v||canW===false||!db,R=v?(v.r||{}):myR,g=v?v.g:myG;
+ if(!all()){c.append(E('p',0,'接力进行中：已完成'+nDone()+'/8棒。8棒都画完后，开放打分和猜测。'));return}
+ if(!v&&!lock&&!myPre){c.append(E('b',0,'开始前一题'));c.append(scale('你对AI做的东西印象如何？（1很差，5很好）',0,k=>{myPre=k;rG()}));return}
+ c.append(E('b',0,'第'+sel+'棒'));
+ c.append(scale('打分（1最低，5最高）',R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
+ const b=E('button',g===sel?'on':'',g===sel?'我猜这棒是AI（已选）':'我猜这棒是AI');b.disabled=lock;b.onclick=()=>{myG=sel;rG()};c.append(b);
+}
+function rF(){
+ const c=$('#fin'),v=myV();c.textContent='';c.hidden=!all();if(!all())return;
+ if(v){if(meta.revealed){if(v.post)res(c);else post(c,v)}else c.append(E('p',0,'已提交。主办方揭晓后，这里会显示答案。'));return}
+ if(canW===false||!db){c.append(E('p',0,'你现在是只读权限，只能看，不能提交。'));return}
+ if(!myPre){c.hidden=true;return}
+ const need=[];for(let n=1;n<=T;n++)if(!myR[n])need.push(n);
+ const row=E('div','row');row.append(E('span',0,'你的把握'));
+ [['没把握',1],['一般',2],['很确定',3]].forEach(([t,k])=>{const b=E('button',myC===k?'on':'',t);b.onclick=()=>{myC=k;rF()};row.append(b)});
+ c.append(row);
+ const s=E('button','on',myG?'提交评分与猜测':'先选一棒当作AI');s.disabled=!myG||need.length>0;c.append(s);
+ if(need.length)c.append(E('p','sub','还差第'+need.join('、')+'棒没打分。'));
+ if(meta.revealed)c.append(E('p','sub','答案已经揭晓，提交后才看得到。'));
+ s.onclick=async()=>{s.disabled=true;try{await db.doc('votes/'+uid).set({r:myR,g:myG,c:myC,pre:myPre,ar:!!meta.revealed,at:Date.now()});msg('')}catch(e){msg('提交失败，请重试。');s.disabled=false}};
+}
+function res(c){
+ const K=meta.aiSlot,v=myV(),vs=Object.values(votes).filter(x=>!x.ar),late=Object.keys(votes).length-vs.length;
+ const av=n=>avg(vs.map(x=>(x.r||{})[n]).filter(Boolean));
+ const rk=[];for(let n=1;n<=T;n++)rk.push([n,av(n)]);
+ rk.sort((a,b)=>b[1]-a[1]);const pos=rk.findIndex(x=>x[0]===K)+1,ok=vs.filter(x=>x.g===K).length;
+ c.append(E('b',0,'揭晓：第'+K+'棒是AI画手「8号」画的'));
+ c.append(E('p',0,(v.g===K?'你猜对了。':'你猜的是第'+v.g+'棒，没猜中。')+'揭晓前共'+vs.length+'人提交，'+ok+'人猜对'+(vs.length?'（'+Math.round(ok/vs.length*100)+'%）':'')+'。'));
+ if(vs.length)c.append(E('p',0,'揭晓前的评分里，AI那棒平均'+av(K).toFixed(1)+'分，在8棒中排第'+pos+'。'));
+ const w=E('div','row');rk.sort((a,b)=>a[0]-b[0]).forEach(([n,a])=>w.append(E('span','chip','第'+n+'棒 '+a.toFixed(1))));c.append(w);
+ const rr=vs.filter(x=>x.rr&&(x.r||{})[K]);
+ if(rr.length)c.append(E('p',0,'知道答案后重新打分的'+rr.length+'人，给AI那棒的平均分从'+avg(rr.map(x=>x.r[K])).toFixed(1)+'变成'+avg(rr.map(x=>x.rr)).toFixed(1)+'。'));
+ if(late)c.append(E('p','sub','另有'+late+'人在揭晓后才提交，不计入上面的数字。'));
+}
+function post(c,v){
+ const K=meta.aiSlot;
+ c.append(E('b',0,'揭晓：第'+K+'棒是AI画手「8号」画的'));
+ c.append(E('p',0,(v.g===K?'你猜对了。':'你猜的是第'+v.g+'棒，没猜中。')+'答完两题就能看到大家的结果。'));
+ c.append(scale('现在你给第'+K+'棒几分？',myRR,k=>{myRR=k;rF()}));
+ c.append(scale('你对AI做的东西印象如何？',myPost,k=>{myPost=k;rF()}));
+ const s=E('button','on','提交');s.disabled=!(myRR&&myPost);c.append(s);
+ s.onclick=async()=>{s.disabled=true;try{await db.doc('votes/'+uid).update({rr:myRR,post:myPost,postAt:Date.now()})}catch(e){msg('提交失败，请重试。');s.disabled=false}};
+}
+function rTalk(){
+ if(document.activeElement&&document.activeElement.id==='ta')return;
+ const c=$('#talk'),v=myV(),ok=v&&(!meta.revealed||v.post);c.textContent='';c.hidden=!ok;if(!ok)return;
+ c.append(E('b',0,'留言'));c.append(E('p','sub','只有提交过猜测的人看得到这里，避免剧透。'));
+ const it=[];Object.values(notes).forEach(d=>(d.items||[]).forEach(x=>it.push(x)));it.sort((a,b)=>a.at-b.at);
+ if(!it.length)c.append(E('p','sub','还没有留言。'));
+ const L=E('div');it.forEach(x=>L.append(E('p','nt',x.t)));c.append(L);
+ if(canW===false)return;
+ const ta=E('textarea');ta.id='ta';ta.maxLength=140;ta.placeholder='说说你怎么猜的（最多140字）';ta.value=talkDraft;ta.oninput=()=>{talkDraft=ta.value};c.append(ta);
+ const s=E('button','on','发表');c.append(s);
+ s.onclick=async()=>{const t=ta.value.trim();if(!t)return;s.disabled=true;const mineN=((notes[uid]||{}).items||[]);try{await db.doc('notes/'+uid).set({items:mineN.concat({t,at:Date.now()}).slice(-20)});talkDraft='';msg('')}catch(e){msg('发表失败，请重试。');s.disabled=false}};
+}
+let talkDraft='';
+
+/* draw */
+const cv=$('#cv'),pal=$('#pal'),tb=$('#tools');
+PAL.forEach((c,i)=>{const b=E('button','sw');b.style.background=c;b.setAttribute('aria-label','颜色'+(i+1));b.onclick=()=>{col=i;if(tool==='erase')tool='pen';rT();$('main').classList.remove('pp')};pal.append(b)});
+const setTool=k=>{if(k==='pick'&&tool!=='pick')prev=tool;tool=k;rT()};
+[['pen','画笔','B'],['erase','橡皮','E'],['fill','填色','G'],['pick','吸管','I'],['line','直线','L'],['rect','矩形','U'],['ell','椭圆','O'],['hand','抓手','H']].forEach(([k,t,h])=>{const b=E('button','',t);b.dataset.k=k;b.title=t+'（'+h+'）';b.onclick=()=>setTool(k);tb.append(b)});
+const ob=$('#opts'),undo=()=>{if(hist.length){redo.push(cur.slice());cur=hist.pop();paint();draft()}},redoF=()=>{if(redo.length){hist.push(cur.slice());cur=redo.pop();paint();draft()}},zm=d=>{const r=vp.getBoundingClientRect();zoomAt(zoom+d,r.left+r.width/2,r.top+r.height/2)};
+[['撤销',undo],['重做',redoF],['笔刷−',()=>{size=Math.max(1,size-1);rT()}],['笔刷+',()=>{size=Math.min(4,size+1);rT()}],['缩小',()=>zm(-1)],['放大',()=>zm(1)],['网格',()=>{grid=!grid;$('#grid').hidden=!grid;rT()},'g'],['实心',()=>{solid=!solid;rT()},'s']].forEach(([t,f,k])=>{const b=E('button','',t);if(k)b.dataset.o=k;b.onclick=f;ob.append(b)});
+const st=E('span','sub');st.id='st';ob.append(st);
+const cc=E('button','cc');cc.setAttribute('aria-label','颜色');cc.onclick=()=>$('main').classList.toggle('pp');tb.prepend(cc);
+
+function rT(){[...tb.children].forEach(b=>b.classList.toggle('on',b.dataset.k===tool));[...pal.children].forEach((b,i)=>b.classList.toggle('on',i===col));cc.style.background=PAL[col];[...ob.children].forEach(b=>{if(b.dataset.o==='g')b.classList.toggle('on',grid);if(b.dataset.o==='s')b.classList.toggle('on',solid)});$('#st').textContent='笔刷 '+size+'，缩放 '+Math.round(zoom*100)+'%'}
+function paint(){
+ const cx=cv.getContext('2d'),id=cx.createImageData(G+W,H),d=id.data;
+ for(let y=0;y<H;y++)for(let x=0;x<G+W;x++){const c=x<G?(ghost?ghost[y*G+x]:1):cur[y*W+x-G],p=RGB[c],k=(y*(G+W)+x)*4;d[k]=p[0];d[k+1]=p[1];d[k+2]=p[2];d[k+3]=x<G?170:255}
+ cx.putImageData(id,0,0);
+}
+const cell=(e,st)=>{const r=cv.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/r.width*(G+W))-G,y=Math.floor((e.clientY-r.top)/r.height*H);if(st&&(x<0||x>=W||y<0||y>=H))return null;return{x:Math.max(0,Math.min(W-1,x)),y:Math.max(0,Math.min(H-1,y))}};
+const put=(x,y)=>{const o=(size-1)>>1,v=tool==='erase'?0:col;for(let j=0;j<size;j++)for(let i=0;i<size;i++){const a=x-o+i,b=y-o+j;if(a>=0&&b>=0&&a<W&&b<H)cur[b*W+a]=v}};
+function line(a,b,c,d,f){let dx=Math.abs(c-a),dy=-Math.abs(d-b),sx=a<c?1:-1,sy=b<d?1:-1,e=dx+dy;for(;;){f(a,b);if(a===c&&b===d)break;const e2=2*e;if(e2>=dy){e+=dy;a+=sx}if(e2<=dx){e+=dx;b+=sy}}}
+function fill(x,y){const t=cur[y*W+x];if(t===col)return;const st=[[x,y]];while(st.length){const[a,b]=st.pop();if(a<0||b<0||a>=W||b>=H||cur[b*W+a]!==t)continue;cur[b*W+a]=col;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1])}}
+const live=()=>mine&&!sent;
+const push=()=>{hist.push(cur.slice());if(hist.length>40)hist.shift();redo=[]};
+const draft=()=>{try{localStorage.setItem('rl'+mine+uid,Array.from(cur,v=>v.toString(16)).join(''))}catch(e){}beat()};
+function beat(){if(!live()||Date.now()-lastBeat<BEAT)return;lastBeat=Date.now();db.doc('slots/s'+mine).update({lastAt:lastBeat}).catch(()=>{})}
+const vp=$('#vp'),ptr=new Map(),hov=$('#hov');let gest=null,penSeen=false;
+function zoomAt(z,x,y){z=Math.max(1,Math.min(6,z));const c=$('#cvw'),r=vp.getBoundingClientRect(),fx=(vp.scrollLeft+x-r.left)/c.offsetWidth,fy=(vp.scrollTop+y-r.top)/c.offsetHeight;zoom=z;c.style.width=z*100+'%';vp.scrollLeft=fx*c.offsetWidth-(x-r.left);vp.scrollTop=fy*c.offsetHeight-(y-r.top);rT()}
+function hv(e){const p=e.pointerType==='mouse'&&cell(e,1);if(!p||tool==='hand'||space){hov.hidden=true;return}const b=tool==='pen'||tool==='erase',s=b?size:1,a=b?(size-1)>>1:0;hov.hidden=false;hov.style.cssText='left:'+(p.x-a+G)/(G+W)*100+'%;top:'+(p.y-a)/H*100+'%;width:'+s/(G+W)*100+'%;height:'+s/H*100+'%'}
+function shape(a,b){
+ if(tool==='line')return line(a.x,a.y,b.x,b.y,put);
+ const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y);
+ if(tool==='rect'){if(solid){for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)cur[y*W+x]=col}else{line(x0,y0,x1,y0,put);line(x0,y1,x1,y1,put);line(x0,y0,x0,y1,put);line(x1,y0,x1,y1,put)}return}
+ const cx=(x0+x1)/2,cy=(y0+y1)/2,rx=(x1-x0)/2+.5,ry=(y1-y0)/2+.5;
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const d=((x-cx)/rx)**2+((y-cy)/ry)**2;if(d<=1&&(solid||rx<=size||ry<=size||((x-cx)/(rx-size))**2+((y-cy)/(ry-size))**2>1))cur[y*W+x]=col}
+}
+cv.addEventListener('pointerdown',e=>{
+ if(!live())return;
+ if(e.pointerType==='pen')penSeen=true;
+ if(e.pointerType==='touch'){
+  ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptr.size===2){if(down){down=false;base=null;cur=hist.pop()||cur;paint()}const[a,b]=[...ptr.values()];gest={d:Math.hypot(a.x-b.x,a.y-b.y)||1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};return}
+  if(penSeen||ptr.size>2)return;
+ }
+ if(tool==='hand'||space){pan={x:e.clientX,y:e.clientY,l:vp.scrollLeft,t:vp.scrollTop};cv.setPointerCapture(e.pointerId);return}
+ const p=cell(e,1);if(!p)return;e.preventDefault();cv.setPointerCapture(e.pointerId);
+ if(tool==='pick'||e.altKey){col=cur[p.y*W+p.x];if(tool==='pick')tool=prev;rT();return}
+ push();last=p;
+ if(tool==='fill'){fill(p.x,p.y);lastPt=p;draft()}
+ else if(tool==='pen'||tool==='erase'){if(e.shiftKey&&lastPt)line(lastPt.x,lastPt.y,p.x,p.y,put);else put(p.x,p.y);lastPt=p;down=true}
+ else{base=cur.slice();start=p;down=true}
+ paint();
+});
+cv.addEventListener('pointermove',e=>{
+ hv(e);
+ if(e.pointerType==='touch'&&ptr.has(e.pointerId)){
+  ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(gest&&ptr.size===2){const[a,b]=[...ptr.values()],mx=(a.x+b.x)/2,my=(a.y+b.y)/2,d=Math.hypot(a.x-b.x,a.y-b.y)||1;zoomAt(zoom*d/gest.d,mx,my);vp.scrollLeft-=mx-gest.mx;vp.scrollTop-=my-gest.my;gest={d,mx,my};return}
+ }
+ if(pan){vp.scrollLeft=pan.l-(e.clientX-pan.x);vp.scrollTop=pan.t-(e.clientY-pan.y);return}
+ if(!down)return;const p=cell(e);
+ if(base){cur=base.slice();shape(start,p)}else{line(last.x,last.y,p.x,p.y,put);lastPt=p}
+ last=p;paint();
+});
+['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,e=>{ptr.delete(e.pointerId);if(ptr.size<2)gest=null;pan=null;if(down){down=false;base=null;draft()}}));
+cv.addEventListener('pointerleave',()=>{hov.hidden=true});
+vp.addEventListener('wheel',e=>{if(!live()||!(e.ctrlKey||e.metaKey))return;e.preventDefault();zoomAt(zoom*(e.deltaY<0?1.15:1/1.15),e.clientX,e.clientY)},{passive:false});
+const KEY={b:'pen',e:'erase',g:'fill',i:'pick',l:'line',u:'rect',o:'ell',h:'hand'};
+addEventListener('keydown',e=>{
+ if(!live()||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+ const k=e.key.toLowerCase(),m=e.ctrlKey||e.metaKey;
+ if(m){if(k==='z'){e.preventDefault();e.shiftKey?redoF():undo()}else if(k==='y'){e.preventDefault();redoF()}return}
+ if(k===' '){space=true;e.preventDefault()}
+ else if(KEY[k])setTool(KEY[k]);
+ else if(k==='['){size=Math.max(1,size-1);rT()}
+ else if(k===']'){size=Math.min(4,size+1);rT()}
+ else if(k==='+'||k==='=')zm(1);
+ else if(k==='-')zm(-1);
+});
+addEventListener('keyup',e=>{if(e.key===' ')space=false});
+function begin(n,at){
+ mine=n;mineAt=at;sent=false;hist=[];redo=[];lastPt=null;lastBeat=0;zoom=1;$('#cvw').style.width='100%';ghost=null;cur=new Uint8Array(W*H);
+ const p=n>1&&S(n-1)&&S(n-1).px;
+ if(p){ghost=new Uint8Array(G*H);for(let y=0;y<H;y++)for(let x=0;x<G;x++)ghost[y*G+x]=parseInt(p[y*W+W-G+x],16)||0}
+ try{const s=localStorage.getItem('rl'+n+uid);if(s&&s.length===W*H)cur=Uint8Array.from(s,c=>parseInt(c,16))}catch(e){}
+ paint();rT();beat();
+}
+async function send(){
+ if(!live())return;sent=true;
+ const px=Array.from(cur,v=>v.toString(16)).join(''),n=mine,t=Date.now();
+ try{
+  await db.doc('slots/s'+n).set({n,claimedBy:uid,claimedAt:mineAt,lastAt:t,px,doneAt:t});
+  try{localStorage.removeItem('rl'+n+uid)}catch(e){}
+  mine=0;sel=n;msg('已交出第'+n+'棒。');show('G');
+ }catch(e){sent=false;msg('交出失败，请再点一次「交出这一棒」。')}
+}
+$('#send').onclick=()=>send();
+async function claim(){
+ const n=nxt();if(!n)return;const ref=db.doc('slots/s'+n);msg('');
+ try{
+  const r=await ref.acquire({holder:uid,ttlMs:5000});
+  if(!r.acquired){msg('有人正在领取，几秒后再试。');return}
+  const s=await ref.get(),d=s.exists?s.data():null;
+  if(d&&d.claimedBy&&!stale(d)){msg('这一棒刚被别人领走了。');return}
+  const at=Date.now();await ref.set({n,claimedBy:uid,claimedAt:at,lastAt:at,px:''});begin(n,at);rD();
+ }catch(e){msg('领取失败，请重试。')}
+}
+function rD(){
+ const h=$('#dHead'),body=$('#dBody'),m=$('main'),dr=tab==='D'&&live();h.textContent='';m.classList.toggle('dr',dr);if(!dr)m.classList.remove('pp');
+ if(!db||!uid){body.hidden=true;h.append(E('p',0,'需要登录并被主办方邀请后才能画。'));return}
+ if(canW===false){body.hidden=true;h.append(E('p',0,'你现在是只读权限。请让主办方在分享菜单里把你设为 Contributor。'));return}
+ if(live()){body.hidden=false;h.append(E('b','tm','第'+mine+'棒'));[['长卷',()=>show('G')],['撤销',()=>undo()],['重做',()=>redoF()],['交出',()=>send()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
+ body.hidden=true;
+ if(!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,'你已经画过一棒了，去看长卷吧。'));return}
+ const n=nxt();
+ if(!n){h.append(E('p',0,all()?'8棒都画完了，去长卷打分和猜测吧。':'上一棒还在画，过一会儿再来。'));return}
+ h.append(E('p',0,'下一棒是第'+n+'棒：不限时间，只看得到上一棒的尾端。超过30分钟没有落笔，这一棒会让给别人。'));
+ h.append(E('p','sub','交出后，你这一棒右端6格会给下一棒参考；如果下一棒是AI，这6格会交给图像工具续画。'));
+ const b=E('button','on','领取第'+n+'棒');b.onclick=claim;h.append(b);
+}
+
+/* organizer */
+const two=(b,label,fn)=>{let t=0;const o=b.textContent;b.onclick=()=>{if(!t){t=setTimeout(()=>{t=0;b.textContent=o},4000);b.textContent=label;return}clearTimeout(t);t=0;b.textContent=o;fn()}};
+for(let n=2;n<=7;n++){const o=E('option','','第'+n+'棒');o.value=n;$('#oSel').append(o)}
+$('#oSel').value=2+Math.floor(Math.random()*6);
+$('#oRes').onclick=async()=>{const n=+$('#oSel').value;if(S(n)){msg('这一棒已有人领取，请换一棒。');return}try{await db.doc('slots/s'+n).set({n,claimedBy:'ORG',claimedAt:Date.now(),px:''});await db.doc('secret/ai').set({n})}catch(e){msg('预留失败，请重试。')}};
+function despeckle(a){
+ const o=a.slice();let k=0;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  const i=y*W+x,nb=[];if(x>0)nb.push(a[i-1]);if(x<W-1)nb.push(a[i+1]);if(y>0)nb.push(a[i-W]);if(y<H-1)nb.push(a[i+W]);
+  if(nb.includes(a[i]))continue;const cnt={};let best=nb[0],bc=0;nb.forEach(c=>{cnt[c]=(cnt[c]||0)+1;if(cnt[c]>bc){bc=cnt[c];best=c}});o[i]=best;k++;
+ }
+ return[o,k];
+}
+$('#oFile').onchange=e=>{
+ const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+ fr.onload=()=>{const im=new Image();im.onload=()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),k=Math.max(W/im.width,H/im.height),w=im.width*k,h=im.height*k;
+  x.drawImage(im,(W-w)/2,(H-h)/2,w,h);const d=x.getImageData(0,0,W,H).data,q=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++){let b=0,bd=1e9;RGB.forEach((p,j)=>{const v=(p[0]-d[i*4])**2+(p[1]-d[i*4+1])**2+(p[2]-d[i*4+2])**2;if(v<bd){bd=v;b=j}});q[i]=b}
+  const[o,n]=despeckle(q);upIso=n;upPx=Array.from(o,v=>v.toString(16)).join('');put2($('#oPrev').getContext('2d'),upPx,0);rO()};im.src=fr.result};
+ fr.readAsDataURL(f);
+};
+$('#oUse').onclick=async()=>{const t=Date.now();try{await db.doc('slots/s'+ai.n).set({n:ai.n,claimedBy:'ORG',claimedAt:t,lastAt:t,px:upPx,doneAt:t});msg('AI那棒已上传。')}catch(e){msg('上传失败，请重试。')}};
+two($('#oRev'),'再点一次，确认揭晓',async()=>{try{await db.doc('meta/state').set({revealed:true,aiSlot:ai.n})}catch(e){msg('揭晓失败，请重试。')}});
+two($('#oClr'),'再点一次，清空全部',async()=>{try{for(const k in slots)await db.doc('slots/'+k).delete();for(const k in votes)await db.doc('votes/'+k).delete();for(const k in notes)await db.doc('notes/'+k).delete();await db.doc('meta/state').delete();await db.doc('secret/ai').delete();myR={};myG=null;myPre=0;myRR=0;myPost=0;upPx=null;msg('已清空。')}catch(e){msg('清空失败，请重试。')}});
+function rO(){
+ if(!owner)return;
+ $('#oInfo').textContent=(ai?'AI那棒（只有你看得到）：第'+ai.n+'棒，'+(done(ai.n)?'图已上传。':'还没上传图。'):'还没设定AI那棒。')+(upPx?' 预览已清掉'+upIso+'个孤立像素。':'')+' 已有'+Object.keys(votes).length+'人提交。';
+ $('#oRes').disabled=$('#oSel').disabled=!!ai;
+ $('#oUse').disabled=!(ai&&upPx&&!done(ai.n));
+ $('#oRev').disabled=!(ai&&all())||!!meta.revealed;
+ const r=$('#oRel');r.textContent='';
+ Object.values(slots).filter(d=>d.claimedBy&&!d.px&&d.claimedBy!=='ORG').forEach(d=>{const b=E('button','','释放第'+d.n+'棒');b.onclick=()=>db.doc('slots/s'+d.n).delete();r.append(b)});
+}
+
+/* shell */
+function show(t){tab=t||tab;['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
+['G','D','O'].forEach(k=>$('#t'+k).onclick=()=>show(k));
+function sync(){
+ if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid){mine=0;msg('超过30分钟没有落笔，这一棒已让给别人。');}}
+ const m=Object.values(slots).find(d=>d.claimedBy===uid&&!d.px);
+ if(m&&!mine&&!sent)begin(m.n,m.claimedAt);
+ rG();rD();rO();
+}
+async function boot(){
+ rG();rD();rT();
+ try{
+  const u=await claude.use('user');
+  if(u){uid=await u.id();owner=!!(await u.isOwner());canW=await u.can('data.write')}
+  db=await claude.use('db');
+ }catch(e){}
+ if(!db||!uid){msg('需要登录并被主办方邀请后才能使用。');rD();return}
+ $('#tO').hidden=!owner;
+ if(window.__solo)document.querySelector('main>.sub').textContent='单机试玩版：你一个人当8位画手和主办方，资料只存在这个浏览器。多人版在 Claude 上内测中。';
+ db.collection('slots').onSnapshot(s=>{slots={};s.docs.forEach(d=>slots[d.id]=d.data());sync()},()=>msg('读取失败，请刷新页面。'));
+ db.collection('votes').onSnapshot(s=>{votes={};s.docs.forEach(d=>votes[d.id]=d.data());rG();rO()},()=>{});
+ db.collection('notes').onSnapshot(s=>{notes={};s.docs.forEach(d=>notes[d.id]=d.data());rTalk()},()=>{});
+ db.doc('meta/state').onSnapshot(s=>{meta=s.exists?s.data():{};rG();rO()},()=>{});
+ if(owner)db.doc('secret/ai').onSnapshot(s=>{ai=s.exists?s.data():null;rO()},()=>{});
+}
+boot();
+</script></body></html>
