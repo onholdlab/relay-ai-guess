@@ -35,6 +35,7 @@ create table if not exists public.relay_votes (
   at      timestamptz not null default now(),
   post_at timestamptz
 );
+alter table public.relay_votes add column if not exists n_done int;
 create table if not exists public.relay_notes (
   id     bigint generated always as identity primary key,
   device text not null,
@@ -67,7 +68,7 @@ language sql stable security definer set search_path = public as $$
       ) order by n), '[]'::jsonb) from relay_slots),
     'meta', (select jsonb_build_object('revealed', revealed, 'aiSlot', case when revealed then ai_slot end) from relay_meta where id = 1),
     'votes', (select coalesce(jsonb_agg(jsonb_build_object(
-        'r', r, 'g', g, 'c', c, 'pre', pre, 'ar', ar, 'rr', rr, 'post', post, 'me', device = p_device)), '[]'::jsonb) from relay_votes),
+        'r', r, 'g', g, 'c', c, 'pre', pre, 'ar', ar, 'nd', n_done, 'rr', rr, 'post', post, 'me', device = p_device)), '[]'::jsonb) from relay_votes),
     'notes', (select coalesce(jsonb_agg(jsonb_build_object('t', t, 'at', (extract(epoch from at) * 1000)::bigint) order by at), '[]'::jsonb) from relay_notes),
     'host', case when relay_is_host(p_token) then jsonb_build_object('aiSlot', (select ai_slot from relay_secret where id = 1)) end
   );
@@ -103,17 +104,29 @@ begin
   return true;
 end $$;
 
--- 投票:8棒都画完才开放;每台装置一票,交出后不能改
+-- 投票:第1棒画完就开放;要给所有已画完的棒评分,只能猜已画完的棒;
+-- 揭晓前可以一直改(记下改的时候画完几棒),揭晓后才交的票标成 ar,只能交一次
 create or replace function public.relay_vote(p_device text, p_r jsonb, p_g int, p_c int, p_pre int) returns boolean
 language plpgsql security definer set search_path = public as $$
+declare d int; ok int; rev boolean;
 begin
   if char_length(p_device) not between 8 and 40 then raise exception 'bad_input'; end if;
-  if (select count(*) from relay_slots where px is not null) < 8 then raise exception 'not_ready'; end if;
-  if (select count(*) from jsonb_each_text(p_r) where key ~ '^[1-8]$' and value ~ '^[1-5]$') <> 8 then raise exception 'bad_input'; end if;
-  insert into relay_votes (device, r, g, c, pre, ar)
-  values (p_device, p_r, p_g, p_c, p_pre, (select revealed from relay_meta where id = 1))
-  on conflict (device) do nothing;
-  if not found then raise exception 'already_voted'; end if;
+  select count(*) into d from relay_slots where px is not null;
+  if d < 1 then raise exception 'not_ready'; end if;
+  if not exists (select 1 from relay_slots where n = p_g and px is not null) then raise exception 'bad_input'; end if;
+  select count(*) into ok from jsonb_each_text(p_r) e join relay_slots s on s.n::text = e.key and s.px is not null where e.value ~ '^[1-5]$';
+  if ok <> d then raise exception 'bad_input'; end if;
+  select revealed into rev from relay_meta where id = 1;
+  if rev then
+    insert into relay_votes (device, r, g, c, pre, ar, n_done) values (p_device, p_r, p_g, p_c, p_pre, true, d)
+    on conflict (device) do nothing;
+    if not found then raise exception 'already_voted'; end if;
+  else
+    insert into relay_votes (device, r, g, c, pre, ar, n_done) values (p_device, p_r, p_g, p_c, p_pre, false, d)
+    on conflict (device) do update set r = excluded.r, g = excluded.g, c = excluded.c,
+      pre = coalesce(relay_votes.pre, excluded.pre), n_done = excluded.n_done, at = now()
+    where relay_votes.ar = false;
+  end if;
   return true;
 end $$;
 

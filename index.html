@@ -190,10 +190,10 @@ window.claude={use:async k=>k==='db'?db:k==='user'?{id:async()=>dev,isOwner:asyn
 const EN=(()=>{let l=null;try{l=localStorage.getItem('lang')}catch(e){}return(l||(/^zh/i.test(navigator.language||'')?'zh':'en'))==='en'})(),tr=(z,e)=>EN?e:z;
 (function(){const q=x=>document.querySelector(x);document.documentElement.lang=EN?'en':'zh-Hant';document.title=tr('8棒接力：哪一棒是AI？','8-Leg Relay: Which One Is AI?');
 [['#i0','8棒接力','8-Leg Relay'],['#i1','8棒裡有1棒是AI畫的，揭曉前沒人知道是哪一棒。','One of the 8 legs was drawn by AI. Nobody knows which until the reveal.'],['#tG','長卷與猜測','Scroll & guess'],['#tD','畫一棒','Draw a leg'],['#tO','主辦方','Host'],['#tL','EN','中文'],
-['#i2','虛線左邊是上一棒的尾端，從這裡接著畫。','Left of the dashed line is the tail of the previous leg. Continue from there. '],['#i3','電腦快捷鍵：B畫筆、E橡皮擦、G填色、I滴管（或Alt加點擊）、L直線、U矩形、O橢圓、H抓手（或按住空白鍵拖動）、[ ]調筆刷、Ctrl加Z復原、Shift加點擊連直線。','Shortcuts: B pen, E eraser, G fill, I picker (or Alt+click), L line, U rect, O ellipse, H hand (or hold Space), [ ] brush size, Ctrl+Z undo, Shift+click for a straight line.'],['#i4','雙指捏合縮放，雙指拖動平移。','Pinch to zoom, drag with two fingers to pan.'],
+['#i2','左邊半透明的那一條，是上一棒最右邊的6格。從虛線右邊開始畫，讓兩棒的畫面接起來。','The faded strip on the left is the last 6 columns of the previous leg. Start drawing right of the dashed line so the two legs connect. '],['#i3','電腦快捷鍵：B畫筆、E橡皮擦、G填色、I滴管（或Alt加點擊）、L直線、U矩形、O橢圓、H抓手（或按住空白鍵拖動）、[ ]調筆刷、Ctrl加Z復原、Shift加點擊連直線。','Shortcuts: B pen, E eraser, G fill, I picker (or Alt+click), L line, U rect, O ellipse, H hand (or hold Space), [ ] brush size, Ctrl+Z undo, Shift+click for a straight line.'],['#i4','雙指捏合縮放，雙指拖動平移。','Pinch to zoom, drag with two fingers to pan.'],
 ['#send','交出這一棒','Submit this leg'],['#oRes','預留為AI棒','Reserve as AI leg'],['#i5','預留後其他人只會看到「進行中」。等上一棒畫完，截圖尾端交給圖像工具續畫，再上傳結果。上傳時會自動清掉孤立的單個像素。','Others will only see “in progress”. When the previous leg is done, give a screenshot of its tail to an image tool, then upload the result. Stray single pixels are removed on upload.'],['#oUse','用這張圖當AI那棒','Use this image as the AI leg'],['#oRev','揭曉','Reveal'],['#oClr','清空全部重來','Clear everything']
 ].forEach(([k,z,e])=>{const el=q(k);if(el)el.textContent=tr(z,e)});
-q('#tL').onclick=()=>{try{localStorage.setItem('lang',EN?'zh':'en')}catch(e){}location.reload()}})();
+q('#tL').onclick=()=>{try{localStorage.setItem('lang',EN?'zh':'en');sessionStorage.setItem('rtab',typeof tab==='string'?tab:'G');sessionStorage.setItem('rsel',String(typeof sel==='number'?sel:1))}catch(e){}location.reload()}})();
 
 const T=8,W=48,H=64,G=6,IDLE=18e5,BEAT=6e4;
 const PAL=["#F4F6F8","#C9D1D9","#7C8896","#2B3440","#0B1220","#E5484D","#F76B15","#FFB400","#F5E663","#8BD450","#2EA043","#2AC4B3","#2F4BFF","#6E56CF","#E26BD1","#8B5A3C"];
@@ -218,7 +218,7 @@ function put2(cx,px,ox){const id=cx.createImageData(W,H),d=id.data;for(let i=0;i
 /* gallery */
 function rG(){
  const cx=$('#big').getContext('2d'),sg=$('#segs'),v=myV(),K=meta.aiSlot;cx.clearRect(0,0,T*W,H);sg.textContent='';
- $('#hint').textContent=(matchMedia('(max-width:640px)').matches?tr('橫向滑動看完整長卷。','Swipe sideways to see the whole scroll. '):'')+(all()&&!myV()?tr('點一棒來評分。','Tap a leg to rate it.'):'');
+ $('#hint').textContent=(matchMedia('(max-width:640px)').matches?tr('橫向滑動看完整長卷。','Swipe sideways to see the whole scroll. '):'')+(nDone()&&!(myV()&&meta.revealed)?tr('點一棒來評分。','Tap a leg to rate it.'):'');
  $('#whoT').textContent=seen()?tr('AI畫手「8號」畫的是第'+K+'棒。','AI artist “No. 8” drew leg '+K+'.'):tr('AI畫手「8號」藏在這8棒裡，只畫了一棒。揭曉前沒人知道是哪一棒。','AI artist “No. 8” is hiding in these 8 legs and drew just one. Nobody knows which until the reveal.');
  for(let n=1;n<=T;n++){
   if(done(n))put2(cx,S(n).px,(n-1)*W);
@@ -227,27 +227,33 @@ function rG(){
  }
  rP();rF();rTalk();
 }
+let gotV=false;
 function rP(){
- const c=$('#pick');c.textContent='';const v=myV(),lock=!!v||canW===false||!db,R=v?(v.r||{}):myR,g=v?v.g:myG;
- if(!all()){c.append(E('p',0,tr('接力進行中：已完成'+nDone()+'/8棒。8棒都畫完後，開放評分和猜測。','Relay in progress: '+nDone()+'/8 legs done. Rating and guessing open once all 8 are drawn.')));return}
+ const c=$('#pick');c.textContent='';const v=myV();
+ if(v&&!gotV){gotV=true;myR=Object.assign({},v.r||{});myG=v.g;myC=v.c||2;myPre=v.pre||myPre}
+ const lock=!!(v&&meta.revealed)||canW===false||!db,R=myR,g=myG;
+ if(!nDone()){c.append(E('p',0,tr('還沒有畫完的棒。第1棒畫完後就能開始評分和猜測。','No legs are finished yet. Rating and guessing open once leg 1 is done.')));return}
  if(!v&&!lock&&!myPre){c.append(E('b',0,tr('開始前一題','One question first')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;rG()}));return}
  c.append(E('b',0,tr('第'+sel+'棒','Leg '+sel)));
+ if(!done(sel)){c.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  c.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
  const b=E('button',g===sel?'on':'',g===sel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));b.disabled=lock;b.onclick=()=>{myG=sel;rG()};c.append(b);
 }
 function rF(){
- const c=$('#fin'),v=myV();c.textContent='';c.hidden=!all();if(!all())return;
- if(v){if(meta.revealed){if(v.post)res(c);else post(c,v)}else c.append(E('p',0,tr('已提交。主辦方揭曉後，這裡會顯示答案。','Submitted. The answer appears here after the host reveals it.')));return}
+ const c=$('#fin'),v=myV();c.textContent='';c.hidden=!nDone();if(!nDone())return;
+ if(v&&meta.revealed){if(v.post)res(c);else post(c,v);return}
  if(canW===false||!db){c.append(E('p',0,tr('你現在是唯讀權限，只能看，不能提交。','You have view-only access and cannot submit.')));return}
  if(!myPre){c.hidden=true;return}
- const need=[];for(let n=1;n<=T;n++)if(!myR[n])need.push(n);
+ const need=[];for(let n=1;n<=T;n++)if(done(n)&&!myR[n])need.push(n);
+ if(!all())c.append(E('p','sub',tr('接力進行中：已完成'+nDone()+'/8棒。','Relay in progress: '+nDone()+'/8 legs done.')));
+ if(v)c.append(E('p','sub',tr('已提交。揭曉前都可以改評分和猜測；有新的棒畫完時，記得也給它評分。','Submitted. You can change your ratings and guess until the reveal. Rate new legs as they finish.')));
  const row=E('div','row');row.append(E('span',0,tr('你的把握','Confidence')));
  [[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const b=E('button',myC===k?'on':'',t);b.onclick=()=>{myC=k;rF()};row.append(b)});
  c.append(row);
- const s=E('button','on',myG?tr('提交評分與猜測','Submit ratings and guess'):tr('先選一棒當作AI','Pick a leg as the AI first'));s.disabled=!myG||need.length>0;c.append(s);
+ const s=E('button','on',!myG?tr('先選一棒當作AI','Pick a leg as the AI first'):v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));s.disabled=!myG||!done(myG)||need.length>0;c.append(s);
  if(need.length)c.append(E('p','sub',tr('還差第'+need.join('、')+'棒沒評分。','Still to rate: leg '+need.join(', ')+'.')));
  if(meta.revealed)c.append(E('p','sub',tr('答案已經揭曉，提交後才看得到。','The answer is out. Submit to see it.')));
- s.onclick=async()=>{s.disabled=true;try{await db.doc('votes/'+uid).set({r:myR,g:myG,c:myC,pre:myPre,ar:!!meta.revealed,at:Date.now()});msg('')}catch(e){msg(tr('提交失敗，請重試。','Submit failed. Try again.'));s.disabled=false}};
+ s.onclick=async()=>{s.disabled=true;try{const r={};for(let n=1;n<=T;n++)if(done(n)&&myR[n])r[n]=myR[n];await db.doc('votes/'+uid).set({r,g:myG,c:myC,pre:myPre,ar:!!meta.revealed,nd:nDone(),at:Date.now()});msg(v?tr('已更新。','Updated.'):'')}catch(e){msg(tr('提交失敗，請重試。','Submit failed. Try again.'));s.disabled=false}};
 }
 function res(c){
  const K=meta.aiSlot,v=myV(),vs=Object.values(votes).filter(x=>!x.ar),late=Object.keys(votes).length-vs.length;
@@ -457,6 +463,7 @@ async function boot(){
  }catch(e){}
  if(!db||!uid){msg(tr('需要登入並受主辦方邀請才能使用。','Sign in and get an invite from the host to use this.'));rD();return}
  $('#tO').hidden=!owner;
+ try{const t=sessionStorage.getItem('rtab'),sl=+sessionStorage.getItem('rsel');sessionStorage.removeItem('rtab');sessionStorage.removeItem('rsel');if(sl)sel=sl;if(t&&(t!=='O'||owner))show(t)}catch(e){}
  if(window.__supa&&location.hash==='#host'&&!owner){$('#tO').hidden=false;const c=E('div','card'),r=E('div','row'),i=E('input'),b=E('button','on',tr('進入主辦方','Enter host mode'));i.id='hk';i.type='password';i.placeholder=tr('主辦方密語','Host passphrase');i.autocomplete='off';b.onclick=()=>{try{localStorage.setItem('relay-host',i.value)}catch(e){}location.reload()};r.append(i,b);c.append(E('p',0,tr('輸入你在 Supabase 設定的密語。','Enter the passphrase you set in Supabase.')),r);$('#vO').prepend(c)}
  db.collection('slots').onSnapshot(s=>{slots={};s.docs.forEach(d=>slots[d.id]=d.data());sync()},()=>msg(tr('讀取失敗，請重新整理頁面。','Loading failed. Refresh the page.')));
  db.collection('votes').onSnapshot(s=>{votes={};s.docs.forEach(d=>votes[d.id]=d.data());rG();rO()},()=>{});
