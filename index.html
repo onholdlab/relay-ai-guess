@@ -76,6 +76,28 @@ main{max-width:1180px}
 #dBody .vp{max-height:calc(100vh - 190px)}
 }
 @media(min-width:1100px) and (pointer:fine){.pal{grid-template-columns:repeat(8,1fr)}.sw{height:32px;min-height:0}}
+.hero{display:grid;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:10px 0}
+.hero h2{font-size:22px;line-height:1.35;margin:0 0 6px}
+.hero .lead{margin:0;color:var(--mute);font-size:15px}
+.nt0{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-left:5px solid var(--mark);border-radius:10px;padding:10px 12px;margin:14px 0}
+.nt0 svg{flex:none;width:34px;height:34px;color:var(--ink)}
+.nt0 b{display:block;font-size:17px;margin-bottom:2px}
+.nt0 p{margin:0;font-size:14px}
+.nt0 small{display:block;color:var(--mute);font-size:12px;margin-top:4px}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:10px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;font-size:14px;color:var(--mute)}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:7px;background:var(--acc);color:var(--on);display:grid;place-items:center;font-weight:700;font-size:13px}
+.steps b{display:block;font-size:15px;color:var(--ink)}
+.cta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.mock{align-self:start;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;align-content:start}
+.mcv{position:relative;align-self:start}.mcv canvas{display:block;width:100%;aspect-ratio:54/64;image-rendering:pixelated;border:1px solid var(--line);background:var(--panel)}
+.mpal{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.mpal i{aspect-ratio:1;border-radius:4px;border:1px solid var(--line)}
+.mtl{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.mtl span{font-size:12px;line-height:1.4;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.mcap{grid-column:1/-1;font-size:12px;color:var(--mute);margin:0}
+.mcap b{color:var(--ink)}
+@media(min-width:641px){.hero{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);padding:22px;gap:24px}.hero h2{font-size:26px}}
 .trow{display:contents}
 .cc,.hb{display:none}
 #msg:empty{display:none}
@@ -115,6 +137,7 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid 
 <div id="msg" role="status"></div>
 
 <section id="vG">
+ <div class="hero" id="hero"></div>
  <div class="card who"><canvas id="av" width="16" height="24"></canvas><p id="whoT"></p></div>
  <div class="scroll"><div class="inner"><canvas id="big" width="384" height="64"></canvas><div id="segs"></div></div></div>
  <p class="sub" id="hint"></p>
@@ -199,7 +222,7 @@ window.claude={use:async k=>k==='db'?db:k==='user'?{id:async()=>dev,isOwner:asyn
 <script>
 const EN=(()=>{let l=null;try{l=localStorage.getItem('lang')}catch(e){}return(l||(/^zh/i.test(navigator.language||'')?'zh':'en'))==='en'})(),tr=(z,e)=>EN?e:z;
 (function(){const q=x=>document.querySelector(x);document.documentElement.lang=EN?'en':'zh-Hant';document.title=tr('8棒接力：哪一棒是AI？','8-Leg Relay: Which One Is AI?');
-[['#i0','8棒接力','8-Leg Relay'],['#i1','',''],['#tG','長卷與猜測','Scroll & guess'],['#tD','畫一棒','Draw a leg'],['#tO','主辦方','Host'],['#tL','EN','中文'],
+[['#i0','8棒接力','8-Leg Relay'],['#i1','',''],['#tG','長卷・找AI','Scroll · Find the AI'],['#tD','畫一棒','Draw a leg'],['#tO','主辦方','Host'],['#tL','EN','中文'],
 ['#i2','左邊半透明的那一條，是上一棒最右邊的6格。從虛線右邊開始畫，讓兩棒的畫面接起來。','The faded strip on the left is the last 6 columns of the previous leg. Start drawing right of the dashed line so the two legs connect. '],['#i3','電腦快捷鍵：B畫筆、E橡皮擦、G填色、I滴管（或Alt加點擊）、L直線、U矩形、O橢圓、H抓手（或按住空白鍵拖動）、[ ]調筆刷、Ctrl加Z復原、Shift加點擊連直線。','Shortcuts: B pen, E eraser, G fill, I picker (or Alt+click), L line, U rect, O ellipse, H hand (or hold Space), [ ] brush size, Ctrl+Z undo, Shift+click for a straight line.'],['#i4','雙指捏合縮放，雙指拖動平移。','Pinch to zoom, drag with two fingers to pan.'],
 ['#send','交出這一棒','Submit this leg'],['#oRes','預留為AI棒','Reserve as AI leg'],['#i5','預留後其他人只會看到「進行中」。等上一棒畫完，截圖尾端交給圖像工具續畫，再上傳結果。上傳時會自動清掉孤立的單個像素。','Others will only see “in progress”. When the previous leg is done, give a screenshot of its tail to an image tool, then upload the result. Stray single pixels are removed on upload.'],['#oUse','用這張圖當AI那棒','Use this image as the AI leg'],['#oDraw','讓8號畫這一棒','Let No. 8 draw this leg'],['#i6','沒有 API 金鑰時：複製指令貼到 Claude 聊天，把它回的 JSON 貼回下面。','Without an API key: copy the instructions into a Claude chat, then paste the JSON it returns below.'],['#oCopy','複製給8號的指令','Copy instructions for No. 8'],['#oOpsPrev','預覽','Preview'],['#oOpsUse','用這些筆畫當AI那棒','Use these strokes as the AI leg'],['#oRev','揭曉','Reveal'],['#oClr','清空全部重來','Clear everything']
 ].forEach(([k,z,e])=>{const el=q(k);if(el)el.textContent=tr(z,e)});
@@ -211,7 +234,7 @@ const RGB=PAL.map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)));
 const AV=[".....hhhhhh.....", "....hhhhhhhh....", "....hyyhhyyh....", "....hssssssh....", "....skssssks....", "....ssssssss....", "....skwwwwks....", ".....skkkks.....", "......ssss......", "...pppwwwwppp...", "..pppppwwppppp..", ".ppppppwwpppppp.", ".pp.pyyyyyyp.pp.", ".pp.pppppppp.pp.", ".ss.pppmmppp.ss.", "....pppmmppp....", "....ppp..ppp....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "...wwkk..kkww...", "...kkkk..kkkk...", "................"],AVC={h:4,y:7,s:15,k:4,w:0,p:14,m:13};
 const $=s=>document.querySelector(s),E=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 let db,uid,owner=false,canW=null,slots={},votes={},notes={},meta={},ai=null,upPx=null,upIso=0;
-let tab='G',sel=1,myR={},myG=null,myC=2,myPre=0,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
+let demo=false,tab='G',sel=1,myR={},myG=null,myC=2,myPre=0,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
 const msg=t=>$('#msg').textContent=t||'';
 const S=n=>slots['s'+n]||null,done=n=>!!(S(n)&&S(n).px),busy=n=>!!(S(n)&&S(n).claimedBy&&!S(n).px);
 const stale=d=>!d.px&&d.claimedBy!=='ORG'&&Date.now()-(d.lastAt||d.claimedAt)>IDLE;
@@ -229,7 +252,7 @@ function put2(cx,px,ox){const id=cx.createImageData(W,H),d=id.data;for(let i=0;i
 function rG(){
  const cx=$('#big').getContext('2d'),sg=$('#segs'),v=myV(),K=meta.aiSlot;cx.clearRect(0,0,T*W,H);sg.textContent='';
  $('#hint').textContent=(matchMedia('(max-width:640px)').matches?tr('橫向滑動看完整長卷。','Swipe sideways to see the whole scroll. '):'')+(nDone()&&!(myV()&&meta.revealed)?tr('點一棒來評分。','Tap a leg to rate it.'):'');
- $('#whoT').textContent=seen()?tr('AI畫手「8號」畫的是第'+K+'棒。','AI artist “No. 8” drew leg '+K+'.'):tr('AI畫手「8號」藏在這8棒裡，只畫了一棒。揭曉前沒人知道是哪一棒。','AI artist “No. 8” is hiding in these 8 legs and drew just one. Nobody knows which until the reveal.');
+ $('#whoT').textContent=seen()?tr('AI畫手「8號」畫的是第'+K+'棒。','AI artist “No. 8” drew leg '+K+'.'):tr('AI畫手「8號」藏在這8棒裡，只畫了一棒。揭曉前沒人知道是哪一棒，把它找出來。','AI artist “No. 8” is hiding in these 8 legs and drew just one. Nobody knows which until the reveal. Find it.');
  for(let n=1;n<=T;n++){
   if(done(n))put2(cx,S(n).px,(n-1)*W);
   const b=E('button','seg'+(done(n)?'':' empty')+(n===sel?' sel':'')+(myG===n||(v&&v.g===n)?' guess':'')+(seen()&&K===n?' ai':''),done(n)?n:n+(busy(n)?tr(' 進行中',' in progress'):tr(' 待畫',' open')));
@@ -322,10 +345,10 @@ const cell=(e,st)=>{const r=cv.getBoundingClientRect(),x=Math.floor((e.clientX-r
 const put=(x,y)=>{const o=(size-1)>>1,v=tool==='erase'?0:col;for(let j=0;j<size;j++)for(let i=0;i<size;i++){const a=x-o+i,b=y-o+j;if(a>=0&&b>=0&&a<W&&b<H)cur[b*W+a]=v}};
 function line(a,b,c,d,f){let dx=Math.abs(c-a),dy=-Math.abs(d-b),sx=a<c?1:-1,sy=b<d?1:-1,e=dx+dy;for(;;){f(a,b);if(a===c&&b===d)break;const e2=2*e;if(e2>=dy){e+=dy;a+=sx}if(e2<=dx){e+=dx;b+=sy}}}
 function fill(x,y){const t=cur[y*W+x];if(t===col)return;const st=[[x,y]];while(st.length){const[a,b]=st.pop();if(a<0||b<0||a>=W||b>=H||cur[b*W+a]!==t)continue;cur[b*W+a]=col;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1])}}
-const live=()=>mine&&!sent;
+const live=()=>(mine&&!sent)||demo;
 const push=()=>{hist.push(cur.slice());if(hist.length>40)hist.shift();redo=[]};
-const draft=()=>{try{localStorage.setItem('rl'+mine+uid,Array.from(cur,v=>v.toString(16)).join(''))}catch(e){}beat()};
-function beat(){if(!live()||Date.now()-lastBeat<BEAT)return;lastBeat=Date.now();db.doc('slots/s'+mine).update({lastAt:lastBeat}).catch(()=>{})}
+const draft=()=>{if(demo)return;try{localStorage.setItem('rl'+mine+uid,Array.from(cur,v=>v.toString(16)).join(''))}catch(e){}beat()};
+function beat(){if(demo||!live()||Date.now()-lastBeat<BEAT)return;lastBeat=Date.now();db.doc('slots/s'+mine).update({lastAt:lastBeat}).catch(()=>{})}
 const vp=$('#vp'),ptr=new Map(),hov=$('#hov');let gest=null,penSeen=false;
 function zoomAt(z,x,y){z=Math.max(1,Math.min(6,z));const c=$('#cvw'),r=vp.getBoundingClientRect(),fx=(vp.scrollLeft+x-r.left)/c.offsetWidth,fy=(vp.scrollTop+y-r.top)/c.offsetHeight;zoom=z;c.style.width=z*100+'%';vp.scrollLeft=fx*c.offsetWidth-(x-r.left);vp.scrollTop=fy*c.offsetHeight-(y-r.top);rT()}
 function hv(e){const p=e.pointerType==='mouse'&&cell(e,1);if(!p||tool==='hand'||space){hov.hidden=true;return}const b=tool==='pen'||tool==='erase',s=b?size:1,a=b?(size-1)>>1:0;hov.hidden=false;hov.style.cssText='left:'+(p.x-a+G)/(G+W)*100+'%;top:'+(p.y-a)/H*100+'%;width:'+s/(G+W)*100+'%;height:'+s/H*100+'%'}
@@ -381,13 +404,14 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{if(e.key===' ')space=false});
 function begin(n,at){
- mine=n;mineAt=at;sent=false;hist=[];redo=[];lastPt=null;lastBeat=0;zoom=1;$('#cvw').style.width='100%';ghost=null;cur=new Uint8Array(W*H);
+ demo=false;mine=n;mineAt=at;sent=false;hist=[];redo=[];lastPt=null;lastBeat=0;zoom=1;$('#cvw').style.width='100%';ghost=null;cur=new Uint8Array(W*H);
  const p=n>1&&S(n-1)&&S(n-1).px;
  if(p){ghost=new Uint8Array(G*H);for(let y=0;y<H;y++)for(let x=0;x<G;x++)ghost[y*G+x]=parseInt(p[y*W+W-G+x],16)||0}
  try{const s=localStorage.getItem('rl'+n+uid);if(s&&s.length===W*H)cur=Uint8Array.from(s,c=>parseInt(c,16))}catch(e){}
  paint();rT();beat();
 }
 async function send(){
+ if(demo){endDemo();return}
  if(!live())return;sent=true;
  const px=Array.from(cur,v=>v.toString(16)).join(''),n=mine,t=Date.now();
  try{
@@ -409,6 +433,8 @@ async function claim(){
 }
 function rD(){
  const h=$('#dHead'),body=$('#dBody'),m=$('main'),dr=tab==='D'&&live();h.textContent='';m.classList.toggle('dr',dr);if(!dr)m.classList.remove('pp');
+ $('#send').textContent=demo?tr('結束試畫','End practice'):tr('交出這一棒','Submit this leg');
+ if(demo){body.hidden=false;h.append(E('b','tm',tr('試畫','Practice')));h.append(E('span','sub',tr('隨便畫，不會交出','Nothing is submitted')));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('結束','End'),()=>endDemo()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
  if(!db||!uid){body.hidden=true;h.append(E('p',0,tr('需要登入並受主辦方邀請才能畫。','Sign in and get an invite from the host to draw.')));return}
  if(canW===false){body.hidden=true;h.append(E('p',0,tr('你現在是唯讀權限。請主辦方在分享選單裡把你設為 Contributor。','You have view-only access. Ask the host to make you a Contributor in the share menu.')));return}
  if(live()){body.hidden=false;h.append(E('b','tm',tr('第'+mine+'棒','Leg '+mine)));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('交出','Submit'),()=>send()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
@@ -418,8 +444,41 @@ function rD(){
  if(!n){h.append(E('p',0,all()?tr('8棒都畫完了，去長卷評分和猜測吧。','All 8 legs are done. Go rate and guess on the scroll.'):tr('上一棒還在畫，過一會兒再來。','The previous leg is still being drawn. Check back soon.')));return}
  h.append(E('p',0,tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過30分鐘沒有落筆，這一棒會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. If you stop drawing for 30 minutes, the leg goes to someone else.')));
  h.append(E('p','sub',tr('交出後，你這一棒右端6格會給下一棒參考；如果下一棒是AI，這6格會交給圖像工具續畫。','After you submit, the rightmost 6 columns of your leg guide the next artist. If the next leg is the AI, those 6 columns go to an image tool to continue.')));
- const b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;h.append(b);
+ const r=E('div','row'),b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;const t=E('button','',tr('先試畫看看','Try the canvas first'));t.onclick=startDemo;r.append(b,t);h.append(r);
 }
+
+/* hero：首頁介紹＋畫布示意 */
+const DEMO_PREV=[{tool:'rect',color:11,from:[0,0],to:[47,43],solid:true},{tool:'rect',color:10,from:[0,44],to:[47,63],solid:true},{tool:'rect',color:15,from:[44,32],to:[46,46],solid:true},{tool:'ellipse',color:10,from:[39,22],to:[47,35],solid:true}];
+const DEMO_OPS=[{tool:'rect',color:11,from:[0,0],to:[47,43],solid:true},{tool:'rect',color:10,from:[0,44],to:[47,63],solid:true},{tool:'ellipse',color:9,from:[18,36],to:[47,54],solid:true},{tool:'ellipse',color:8,from:[33,5],to:[42,14],solid:true},{tool:'ellipse',color:0,from:[3,9],to:[15,14],solid:true},{tool:'ellipse',color:0,from:[8,6],to:[17,12],solid:true},{tool:'rect',color:15,from:[6,31],to:[20,48],solid:true},{tool:'line',color:5,size:2,from:[4,31],to:[13,22]},{tool:'line',color:5,size:2,from:[13,22],to:[22,31]},{tool:'fill',color:5,at:[13,27]},{tool:'rect',color:4,from:[11,40],to:[14,48],solid:true},{tool:'rect',color:8,from:[16,34],to:[19,37],solid:true},{tool:'pen',color:7,size:2,points:[[15,63],[18,58],[24,54],[31,52],[39,51],[47,50]]},{tool:'pen',color:4,size:1,points:[[25,13],[26,14],[27,13],[28,14],[29,13]]}];
+const tailG=px=>{const g=new Uint8Array(G*H);for(let y=0;y<H;y++)for(let x=0;x<G;x++)g[y*G+x]=parseInt(px[y*W+W-G+x],16)||0;return g};
+function paintTo(c,g,px){const cx=c.getContext('2d'),id=cx.createImageData(G+W,H),d=id.data;for(let y=0;y<H;y++)for(let x=0;x<G+W;x++){const v=x<G?g[y*G+x]:parseInt(px[y*W+x-G],16),p=RGB[v]||RGB[0],k=(y*(G+W)+x)*4;d[k]=p[0];d[k+1]=p[1];d[k+2]=p[2];d[k+3]=x<G?170:255}cx.putImageData(id,0,0)}
+function buildHero(){
+ const h=$('#hero');if(!h||!window.Strokes)return;
+ const L=E('div');
+ L.append(E('h2',0,tr('8個人接力畫一幅像素長卷，其中一棒是AI。','Eight people draw one pixel scroll in relay. One leg is AI.')));
+ L.append(E('p','lead',tr('每人畫一棒，只看得到上一棒的尾巴。全部畫完後，大家一起猜：哪一棒是AI畫手「8號」畫的？','Each person draws one leg and only sees the tail of the previous one. Then everyone guesses which leg AI artist “No. 8” drew.')));
+ const nt=E('div','nt0');nt.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="11" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 4h8M16 4v3M16 18v-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M5 29 27 7" stroke="var(--bad)" stroke-width="3" stroke-linecap="round"/></svg>';
+ const nb=E('div');nb.append(E('b',0,tr('不倒數，慢慢畫','No countdown. Take your time.')),E('p',0,tr('大多數畫畫遊戲都在跟時間賽跑。這裡沒有計時器，你想畫多久就畫多久，畫到滿意再交。','Most drawing games race the clock. There is no timer here: draw as long as you like and submit when you are happy with it.')),E('small',0,tr('只要30分鐘內有落筆，這一棒就一直是你的。','As long as you draw something every 30 minutes, the leg stays yours.')));nt.append(nb);L.append(nt);
+ const ol=E('ol','steps');[[tr('領一棒','Take a leg'),tr('接著上一棒最右邊6格畫下去。','Continue from the last 6 columns of the previous leg.')],[tr('慢慢畫','Draw at your pace'),tr('48×64像素、16色、8種工具，不限時間。','48×64 pixels, 16 colors, 8 tools, no time limit.')],[tr('找出AI','Find the AI'),tr('給每一棒評分，猜哪一棒是8號畫的，揭曉後看大家猜得多準。','Rate every leg, guess which one No. 8 drew, then see how everyone did.')]].forEach(([a,b])=>{const li=E('li'),d=E('div');d.append(E('b',0,a),document.createTextNode(b));li.append(d);ol.append(li)});L.append(ol);
+ const ct=E('div','cta'),b1=E('button','on',tr('先試畫看看','Try the canvas')),b2=E('button','',tr('去領一棒','Take a leg')),b3=E('button','',tr('看長卷・找AI','See the scroll'));
+ b1.onclick=startDemo;b2.onclick=()=>show('D');b3.onclick=()=>$('.scroll').scrollIntoView({behavior:'smooth',block:'center'});ct.append(b1,b2,b3);L.append(ct);
+ const M=E("div","mock"),wrap=E("div","mcv"),c=E('canvas');c.width=G+W;c.height=H;c.setAttribute('role','img');c.setAttribute('aria-label',tr('畫布示意：左邊半透明的是上一棒尾端','Canvas preview: the faded strip on the left is the previous leg’s tail'));wrap.append(c,E('div','sepl'));
+ const R=E('div'),mp=E('div','mpal');PAL.forEach(x=>{const i=E('i');i.style.background=x;mp.append(i)});
+ const tl=E('div','mtl');[tr('畫筆','Pen'),tr('橡皮擦','Eraser'),tr('填色','Fill'),tr('滴管','Picker'),tr('直線','Line'),tr('矩形','Rect'),tr('橢圓','Ellipse'),tr('抓手','Hand'),tr('放大600%','Zoom 600%'),tr('復原40步','40 undos'),tr('格線','Grid'),tr('草稿自動存','Auto-saved draft'),tr('快捷鍵','Shortcuts'),tr('雙指縮放','Pinch zoom')].forEach(x=>tl.append(E('span',0,x)));
+ R.append(mp,tl);const cap=E('p','mcap');cap.append(E('b',0,tr('畫布長這樣','This is the canvas')),document.createTextNode(tr('：虛線左邊是上一棒的尾巴，你從右邊接著畫。（示意）',': left of the dashed line is the previous leg’s tail; you continue on the right. (sample)')));
+ M.append(wrap,R,cap);h.append(L,M);
+ const g=tailG(Strokes.render(DEMO_PREV)),ops=Strokes.clean(DEMO_OPS);let i=0;
+ if(matchMedia('(prefers-reduced-motion:reduce)').matches){paintTo(c,g,Strokes.render(ops));return}
+ const step=()=>{paintTo(c,g,Strokes.render(ops,i));const end=i>=ops.length;i=end?0:i+1;setTimeout(step,end?2600:i===1?500:380)};step();
+}
+function startDemo(){
+ if(mine&&!sent){show('D');return}
+ demo=true;hist=[];redo=[];lastPt=null;zoom=1;$('#cvw').style.width='100%';cur=new Uint8Array(W*H);
+ let last=0;for(let n=T;n>=1;n--)if(done(n)){last=n;break}
+ ghost=tailG(last?S(last).px:Strokes.render(DEMO_PREV));
+ msg('');show('D');paint();rT();
+}
+function endDemo(){demo=false;ghost=null;cur=new Uint8Array(W*H);show('D')}
 
 /* organizer */
 const two=(b,label,fn)=>{let t=0;const o=b.textContent;b.onclick=()=>{if(!t){t=setTimeout(()=>{t=0;b.textContent=o},4000);b.textContent=label;return}clearTimeout(t);t=0;b.textContent=o;fn()}};
@@ -473,7 +532,7 @@ function sync(){
  rG();rD();rO();
 }
 async function boot(){
- rG();rD();rT();
+ buildHero();rG();rD();rT();
  try{
   const u=await claude.use('user');
   if(u){uid=await u.id();owner=!!(await u.isOwner());canW=await u.can('data.write')}
