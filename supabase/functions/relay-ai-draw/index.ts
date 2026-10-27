@@ -99,34 +99,54 @@ const reply = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status:
 const db = (path: string, init: RequestInit = {}) => fetch(URL_ + "/rest/v1/" + path, { ...init, headers: { ...AUTH, "Content-Type": "application/json", Prefer: "return=representation", ...(init.headers || {}) } }).then(async r => { if (!r.ok) throw new Error(path + " " + r.status + " " + await r.text()); return r.json(); });
 async function sha256(t: string) { const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join(""); }
 
+// 誰都可以「提醒」8號(玩家交出一棒後網頁會自動呼叫):只有在 AI 那棒的上一棒畫完、AI 那棒還沒畫時才會真的畫。
+// 一般玩家呼叫一律立刻回 {ok:true},不透露哪一棒是 AI;主辦方帶密語呼叫則會等畫完並回報結果。
+async function draw(scroll: number) {
+  const sec = await db(`relay_secret?select=ai_slot&scroll=eq.${scroll}`);
+  const k = sec[0]?.ai_slot;
+  if (!k) return { error: "no_ai_slot", status: 400 };
+  const sl = await db(`relay_slots?select=n,px&scroll=eq.${scroll}&n=in.(${k - 1},${k})`);
+  const prev = sl.find((x: any) => x.n === k - 1), me = sl.find((x: any) => x.n === k);
+  if (!prev?.px) return { error: "prev_not_done", status: 400 };
+  if (me?.px) return { error: "already_done", status: 400 };
+  // 上鎖,避免同時畫兩次;失敗的話5分鐘後可再試
+  const until = new Date(Date.now() - 5 * 60e3).toISOString();
+  const lock = await db(`relay_secret?scroll=eq.${scroll}&or=(locked_at.is.null,locked_at.lt.${until})`, { method: "PATCH", body: JSON.stringify({ locked_at: new Date().toISOString() }) });
+  if (!lock.length) return { error: "already_drawing", status: 409 };
+  const tail: string[] = []; for (let y = 0; y < 64; y++) tail.push(prev.px.slice(y * 48 + 42, y * 48 + 48));
+  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: "user", content: S.prompt(tail) }] }) });
+  const j = await r.json();
+  if (!r.ok) return { error: "model_failed", detail: j?.error?.message || r.status, status: 502 };
+  const text = (j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+  const m = text.match(/\{[\s\S]*\}/);
+  const strokes = S.clean(m ? JSON.parse(m[0]).strokes : []);
+  if (strokes.length < 5) return { error: "too_few_strokes", status: 502 };
+  const px = S.render(strokes), now = new Date().toISOString();
+  await db(`relay_secret?scroll=eq.${scroll}`, { method: "PATCH", body: JSON.stringify({ ops: strokes, model: MODEL }) });
+  const up = await db(`relay_slots?scroll=eq.${scroll}&n=eq.${k}&px=is.null`, { method: "PATCH", body: JSON.stringify({ px, done_at: now, last_at: now }) });
+  if (!up.length) return { error: "already_done", status: 409 };
+  // 8棒都畫完就記下完成時間(24小時後自動揭曉)
+  const cnt = await db(`relay_slots?select=n&scroll=eq.${scroll}&px=not.is.null`);
+  if (cnt.length === 8) await db(`relay_scrolls?id=eq.${scroll}&done_at=is.null`, { method: "PATCH", body: JSON.stringify({ done_at: now }) });
+  return { ok: true, strokes: strokes.length, status: 200 };
+}
+
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
-    const { token } = await req.json().catch(() => ({}));
-    if (!token) return reply({ error: "not_host" }, 403);
-    const host = await db("relay_host?select=token_hash&token_hash=eq." + await sha256(token));
-    if (!host.length) return reply({ error: "not_host" }, 403);
-    if (!KEY) return reply({ error: "no_api_key" }, 500);
-    const sec = await db("relay_secret?select=ai_slot&id=eq.1");
-    const k = sec[0]?.ai_slot;
-    if (!k) return reply({ error: "no_ai_slot" }, 400);
-    const sl = await db(`relay_slots?select=n,px&n=in.(${k - 1},${k})`);
-    const prev = sl.find((x: any) => x.n === k - 1), me = sl.find((x: any) => x.n === k);
-    if (!prev?.px) return reply({ error: "prev_not_done" }, 400);
-    if (me?.px) return reply({ error: "already_done" }, 400);
-    const tail: string[] = []; for (let y = 0; y < 64; y++) tail.push(prev.px.slice(y * 48 + 42, y * 48 + 48));
-    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: "user", content: S.prompt(tail) }] }) });
-    const j = await r.json();
-    if (!r.ok) return reply({ error: "model_failed", detail: j?.error?.message || r.status }, 502);
-    const text = (j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
-    const m = text.match(/\{[\s\S]*\}/);
-    const strokes = S.clean(m ? JSON.parse(m[0]).strokes : []);
-    if (strokes.length < 5) return reply({ error: "too_few_strokes" }, 502);
-    const px = S.render(strokes);
-    await db("relay_secret?id=eq.1", { method: "PATCH", body: JSON.stringify({ ops: strokes, model: MODEL }) });
-    const up = await db(`relay_slots?n=eq.${k}&px=is.null`, { method: "PATCH", body: JSON.stringify({ px, done_at: new Date().toISOString(), last_at: new Date().toISOString() }) });
-    if (!up.length) return reply({ error: "already_done" }, 409);
-    return reply({ ok: true, strokes: strokes.length });
+    const { token, scroll } = await req.json().catch(() => ({}));
+    const sc = Math.floor(+scroll);
+    if (!(sc >= 1)) return reply({ error: "bad_input" }, 400);
+    const host = token ? (await db("relay_host?select=token_hash&token_hash=eq." + await sha256(token))).length > 0 : false;
+    if (!KEY) return host ? reply({ error: "no_api_key" }, 500) : reply({ ok: true });
+    if (!host) {
+      const job = draw(sc).catch(() => null);
+      const rt = (globalThis as any).EdgeRuntime;
+      if (rt?.waitUntil) rt.waitUntil(job); else await job;
+      return reply({ ok: true });
+    }
+    const { status, ...out } = await draw(sc);
+    return reply(out, status);
   } catch (e) { return reply({ error: "failed", detail: String(e).slice(0, 300) }, 500); }
 });

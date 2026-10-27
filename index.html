@@ -98,6 +98,11 @@ main{max-width:1180px}
 .mcap{grid-column:1/-1;font-size:12px;color:var(--mute);margin:0}
 .mcap b{color:var(--ink)}
 @media(min-width:641px){.hero{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);padding:22px;gap:24px}.hero h2{font-size:26px}}
+.scr{display:flex;gap:6px;overflow-x:auto;margin:10px 0 0;padding-bottom:2px}
+.scr:empty{display:none}
+.scr button{flex:none;font-size:14px;min-height:36px;padding:4px 12px;border-radius:999px}
+.scr small{color:var(--mute);margin-left:4px}
+.scr button.on small{color:inherit;opacity:.8}
 .trow{display:contents}
 .cc,.hb{display:none}
 #msg:empty{display:none}
@@ -138,6 +143,7 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid 
 
 <section id="vG">
  <div class="hero" id="hero"></div>
+ <div class="scr" id="scr"></div>
  <div class="card who"><canvas id="av" width="16" height="24"></canvas><p id="whoT"></p></div>
  <div class="scroll"><div class="inner"><canvas id="big" width="384" height="64"></canvas><div id="segs"></div></div></div>
  <p class="sub" id="hint"></p>
@@ -189,7 +195,8 @@ let dev=null;try{dev=localStorage.getItem('ohl-device')}catch(e){}
 if(!dev||dev.length<8){dev=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,12);try{localStorage.setItem('ohl-device',dev)}catch(e){}}
 const tok=()=>{try{return localStorage.getItem('relay-host')||null}catch(e){return null}};
 async function rpc(fn,a){const r=await fetch(URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(a||{})});if(!r.ok){let m='';try{m=(await r.json()).message}catch(e){}throw new Error(m||'http_'+r.status)}const t=await r.text();return t?JSON.parse(t):null}
-let S=null,first=null;const L={slots:[],votes:[],notes:[],meta:[],secret:[]};
+let S=null,first=null,ver=null,SC=null;try{SC=+sessionStorage.getItem('rscroll')||null}catch(e){}const nudged={};
+const L={slots:[],votes:[],notes:[],meta:[],secret:[]};
 function fire(){if(!S)return;
  const sl=S.slots.map(x=>({id:'s'+x.n,data:()=>({n:x.n,px:x.px,claimedBy:x.mine?dev:(x.px||x.busy?'x':null),claimedAt:x.mineAt||0,lastAt:x.busy||x.px?Date.now():0})}));
  const vs=S.votes.map((x,i)=>({id:x.me?dev:'v'+i,data:()=>x}));
@@ -198,24 +205,33 @@ function fire(){if(!S)return;
  L.slots.forEach(f=>f({docs:sl}));L.votes.forEach(f=>f({docs:vs}));L.notes.forEach(f=>f({docs:nt}));
  L.meta.forEach(f=>f({exists:true,data:()=>meta}));L.secret.forEach(f=>f({exists:!!ai,data:()=>({n:ai})}));
 }
-async function poll(){try{S=await rpc('relay_state',{p_device:dev,p_token:tok()});fire()}catch(e){}}
+const CS=()=>(S&&S.my&&S.my.scroll)||(S&&S.scroll);
+const nudge=sc=>{fetch(URL+'/functions/v1/relay-ai-draw',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({scroll:sc})}).catch(()=>{})};
+async function poll(){try{const r=await rpc('relay_state',{p_device:dev,p_token:tok(),p_scroll:SC,p_v:ver});if(!r||r.same)return;S=r;ver=r.v;
+ const cur=(S.scrolls||[]).find(x=>x.id===S.scroll);if(cur&&!cur.finished&&cur.done>0&&!nudged[S.scroll]){nudged[S.scroll]=1;nudge(S.scroll)}
+ fire()}catch(e){}}
+const fresh=()=>{ver=null;return poll()};
 first=poll();setInterval(()=>{if(!document.hidden)poll()},5000);
 function doc(p){const[c,id]=p.split('/'),n=+String(id).slice(1);return{
  acquire:async()=>({acquired:true}),
  get:async()=>{const x=S&&S.slots.find(y=>'s'+y.n===id);return{exists:!!x,data:()=>x?{n:x.n,px:x.px,claimedBy:x.mine?dev:(x.px||x.busy?'x':null),lastAt:x.busy?Date.now():0}:null}},
  set:async d=>{
-  if(c==='slots'){if(d.claimedBy==='ORG')await rpc(d.px?'relay_upload':'relay_reserve',d.px?{p_token:tok(),p_px:d.px}:{p_token:tok(),p_n:n});else if(d.px)await rpc('relay_submit',{p_device:dev,p_n:n,p_px:d.px});else await rpc('relay_claim',{p_device:dev,p_n:n,p_token:tok()})}
-  else if(c==='votes')await rpc('relay_vote',{p_device:dev,p_r:d.r,p_g:d.g,p_c:d.c,p_pre:d.pre});
-  else if(c==='notes'){const it=d.items[d.items.length-1];await rpc('relay_note',{p_device:dev,p_t:it.t})}
-  else if(c==='meta')await rpc('relay_reveal',{p_token:tok()});
-  await poll()},
- update:async d=>{if(c==='slots')return rpc('relay_beat',{p_device:dev,p_n:n});if(c==='votes'){await rpc('relay_post',{p_device:dev,p_rr:d.rr,p_post:d.post});await poll()}},
- delete:async()=>{if(c==='slots')await rpc('relay_release',{p_token:tok(),p_n:n});else if(c==='meta')await rpc('relay_reset',{p_token:tok()});else return;await poll()},
+  const sc=S.scroll;
+  if(c==='slots'){if(d.claimedBy==='ORG')await rpc(d.px?'relay_upload':'relay_reserve',d.px?{p_token:tok(),p_scroll:sc,p_px:d.px}:{p_token:tok(),p_scroll:sc,p_n:n});
+   else if(d.px){const k=CS();await rpc('relay_submit',{p_device:dev,p_scroll:k,p_n:n,p_px:d.px});nudge(k);SC=k;try{sessionStorage.setItem('rscroll',k)}catch(e){}}
+   else await rpc('relay_claim',{p_device:dev,p_scroll:sc,p_n:n,p_token:tok()})}
+  else if(c==='votes')await rpc('relay_vote',{p_device:dev,p_scroll:sc,p_r:d.r,p_g:d.g,p_c:d.c,p_pre:d.pre});
+  else if(c==='notes'){const it=d.items[d.items.length-1];await rpc('relay_note',{p_device:dev,p_scroll:sc,p_t:it.t})}
+  else if(c==='meta')await rpc('relay_reveal',{p_token:tok(),p_scroll:sc});
+  await fresh()},
+ update:async d=>{if(c==='slots')return rpc('relay_beat',{p_device:dev,p_scroll:CS(),p_n:n});if(c==='votes'){await rpc('relay_post',{p_device:dev,p_scroll:S.scroll,p_rr:d.rr,p_post:d.post});await fresh()}},
+ delete:async()=>{if(c==='slots')await rpc('relay_release',{p_token:tok(),p_scroll:S.scroll,p_n:n});else if(c==='meta'){await rpc('relay_reset',{p_token:tok()});SC=null}else return;await fresh()},
  onSnapshot:f=>{(c==='meta'?L.meta:L.secret).push(f);fire()}
 }}
 const db={doc,collection:c=>({onSnapshot:f=>{L[c].push(f);fire()}})};
-window.__aiStrokes=async(px,ops)=>{await rpc('relay_upload_strokes',{p_token:tok(),p_px:px,p_ops:ops});await poll()};
-window.__aiDraw=async()=>{const r=await fetch(URL+'/functions/v1/relay-ai-draw',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({token:tok()})});const j=await r.json().catch(()=>({}));await poll();if(!r.ok)throw new Error(j.error||('http_'+r.status));return j};
+window.__aiStrokes=async(px,ops)=>{await rpc('relay_upload_strokes',{p_token:tok(),p_scroll:S.scroll,p_px:px,p_ops:ops});await fresh()};
+window.__aiDraw=async()=>{const r=await fetch(URL+'/functions/v1/relay-ai-draw',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({token:tok(),scroll:S.scroll})});const j=await r.json().catch(()=>({}));await fresh();if(!r.ok)throw new Error(j.error||('http_'+r.status));return j};
+window.__rs={get:()=>S,set:id=>{SC=id;try{sessionStorage.setItem('rscroll',id)}catch(e){}return fresh()},open:async()=>{const id=await rpc('relay_open',{p_device:dev});SC=id;try{sessionStorage.setItem('rscroll',id)}catch(e){}await fresh();return id}};
 window.claude={use:async k=>k==='db'?db:k==='user'?{id:async()=>dev,isOwner:async()=>{await first;return!!(S&&S.host)},can:async()=>true}:null};
 })();
 </script>
@@ -236,6 +252,9 @@ const $=s=>document.querySelector(s),E=(t,c,x)=>{const e=document.createElement(
 let db,uid,owner=false,canW=null,slots={},votes={},notes={},meta={},ai=null,upPx=null,upIso=0;
 let demo=false,tab='G',sel=1,myR={},myG=null,myC=2,myPre=0,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
 const msg=t=>$('#msg').textContent=t||'';
+const RS=()=>window.__rs&&window.__rs.get();
+const dk=n=>'rl'+(RS()&&RS().my?RS().my.scroll+'_':'')+n+uid;
+let curScroll=null;
 const S=n=>slots['s'+n]||null,done=n=>!!(S(n)&&S(n).px),busy=n=>!!(S(n)&&S(n).claimedBy&&!S(n).px);
 const stale=d=>!d.px&&d.claimedBy!=='ORG'&&Date.now()-(d.lastAt||d.claimedAt)>IDLE;
 const nDone=()=>{let c=0;for(let n=1;n<=T;n++)if(done(n))c++;return c},all=()=>nDone()===T,myV=()=>uid?votes[uid]:null;
@@ -253,6 +272,7 @@ function rG(){
  const cx=$('#big').getContext('2d'),sg=$('#segs'),v=myV(),K=meta.aiSlot;cx.clearRect(0,0,T*W,H);sg.textContent='';
  $('#hint').textContent=(matchMedia('(max-width:640px)').matches?tr('橫向滑動看完整長卷。','Swipe sideways to see the whole scroll. '):'')+(nDone()&&!(myV()&&meta.revealed)?tr('點一棒來評分。','Tap a leg to rate it.'):'');
  $('#whoT').textContent=seen()?tr('AI畫手「8號」畫的是第'+K+'棒。','AI artist “No. 8” drew leg '+K+'.'):tr('AI畫手「8號」藏在這8棒裡，只畫了一棒。揭曉前沒人知道是哪一棒，把它找出來。','AI artist “No. 8” is hiding in these 8 legs and drew just one. Nobody knows which until the reveal. Find it.');
+ rScr();
  for(let n=1;n<=T;n++){
   if(done(n))put2(cx,S(n).px,(n-1)*W);
   const b=E('button','seg'+(done(n)?'':' empty')+(n===sel?' sel':'')+(myG===n||(v&&v.g===n)?' guess':'')+(seen()&&K===n?' ai':''),done(n)?n:n+(busy(n)?tr(' 進行中',' in progress'):tr(' 待畫',' open')));
@@ -261,6 +281,10 @@ function rG(){
  rP();rF();rTalk();
 }
 let gotV=false;
+function rScr(){
+ const box=$('#scr'),st=RS();box.textContent='';if(!st||!st.scrolls)return;
+ st.scrolls.forEach(x=>{const b=E('button',x.id===st.scroll?'on':'',tr('第'+x.id+'卷','Scroll '+x.id));b.append(E('small',0,x.revealed?tr('已揭曉','revealed'):x.finished?tr('待揭曉','to reveal'):x.done+'/8'));b.onclick=()=>{if(x.id!==st.scroll){msg('');window.__rs.set(x.id)}};box.append(b)});
+}
 function rP(){
  const c=$('#pick');c.textContent='';const v=myV();
  if(v&&!gotV){gotV=true;myR=Object.assign({},v.r||{});myG=v.g;myC=v.c||2;myPre=v.pre||myPre}
@@ -347,7 +371,7 @@ function line(a,b,c,d,f){let dx=Math.abs(c-a),dy=-Math.abs(d-b),sx=a<c?1:-1,sy=b
 function fill(x,y){const t=cur[y*W+x];if(t===col)return;const st=[[x,y]];while(st.length){const[a,b]=st.pop();if(a<0||b<0||a>=W||b>=H||cur[b*W+a]!==t)continue;cur[b*W+a]=col;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1])}}
 const live=()=>(mine&&!sent)||demo;
 const push=()=>{hist.push(cur.slice());if(hist.length>40)hist.shift();redo=[]};
-const draft=()=>{if(demo)return;try{localStorage.setItem('rl'+mine+uid,Array.from(cur,v=>v.toString(16)).join(''))}catch(e){}beat()};
+const draft=()=>{if(demo)return;try{localStorage.setItem(dk(mine),Array.from(cur,v=>v.toString(16)).join(''))}catch(e){}beat()};
 function beat(){if(demo||!live()||Date.now()-lastBeat<BEAT)return;lastBeat=Date.now();db.doc('slots/s'+mine).update({lastAt:lastBeat}).catch(()=>{})}
 const vp=$('#vp'),ptr=new Map(),hov=$('#hov');let gest=null,penSeen=false;
 function zoomAt(z,x,y){z=Math.max(1,Math.min(6,z));const c=$('#cvw'),r=vp.getBoundingClientRect(),fx=(vp.scrollLeft+x-r.left)/c.offsetWidth,fy=(vp.scrollTop+y-r.top)/c.offsetHeight;zoom=z;c.style.width=z*100+'%';vp.scrollLeft=fx*c.offsetWidth-(x-r.left);vp.scrollTop=fy*c.offsetHeight-(y-r.top);rT()}
@@ -407,7 +431,7 @@ function begin(n,at){
  demo=false;mine=n;mineAt=at;sent=false;hist=[];redo=[];lastPt=null;lastBeat=0;zoom=1;$('#cvw').style.width='100%';ghost=null;cur=new Uint8Array(W*H);
  const p=n>1&&S(n-1)&&S(n-1).px;
  if(p){ghost=new Uint8Array(G*H);for(let y=0;y<H;y++)for(let x=0;x<G;x++)ghost[y*G+x]=parseInt(p[y*W+W-G+x],16)||0}
- try{const s=localStorage.getItem('rl'+n+uid);if(s&&s.length===W*H)cur=Uint8Array.from(s,c=>parseInt(c,16))}catch(e){}
+ try{const s=localStorage.getItem(dk(n));if(s&&s.length===W*H)cur=Uint8Array.from(s,c=>parseInt(c,16))}catch(e){}
  paint();rT();beat();
 }
 async function send(){
@@ -416,7 +440,7 @@ async function send(){
  const px=Array.from(cur,v=>v.toString(16)).join(''),n=mine,t=Date.now();
  try{
   await db.doc('slots/s'+n).set({n,claimedBy:uid,claimedAt:mineAt,lastAt:t,px,doneAt:t});
-  try{localStorage.removeItem('rl'+n+uid)}catch(e){}
+  try{localStorage.removeItem(dk(n))}catch(e){}
   mine=0;sel=n;msg(tr('已交出第'+n+'棒。','Leg '+n+' submitted.'));show('G');
  }catch(e){sent=false;msg(tr('交出失敗，請再點一次「交出這一棒」。','Submit failed. Tap “Submit this leg” again.'))}
 }
@@ -439,10 +463,22 @@ function rD(){
  if(canW===false){body.hidden=true;h.append(E('p',0,tr('你現在是唯讀權限。請主辦方在分享選單裡把你設為 Contributor。','You have view-only access. Ask the host to make you a Contributor in the share menu.')));return}
  if(live()){body.hidden=false;h.append(E('b','tm',tr('第'+mine+'棒','Leg '+mine)));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('交出','Submit'),()=>send()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
  body.hidden=true;
- if(!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,tr('你已經畫過一棒了，去看長卷吧。','You already drew a leg. Go look at the scroll.')));return}
+ const st=RS();
+ if(st&&!owner){
+  if(st.drawScroll&&st.drawScroll!==st.scroll){h.append(E('p','sub',tr('正在打開第'+st.drawScroll+'卷…','Opening scroll '+st.drawScroll+'…')));window.__rs.set(st.drawScroll);return}
+  if(!st.drawScroll){
+   const drew=Object.values(slots).some(d=>d.claimedBy===uid&&d.px),nx=Math.max(...st.scrolls.map(x=>x.id))+1;
+   if(st.canOpen){
+    h.append(E('b',0,drew?tr('你已經在這卷畫過一棒了，要開下一卷嗎？','You already drew in this scroll. Open the next one?'):tr('這卷滿了，要開下一卷嗎？','This scroll is full. Open the next one?')));
+    h.append(E('p','sub',tr('開了之後你可以畫新一卷的第1棒。8號也會藏在新的一卷裡。','You can draw leg 1 of the new scroll. No. 8 will hide in it too.')));
+    const b=E('button','on',tr('開第'+nx+'卷','Open scroll '+nx));b.onclick=async()=>{b.disabled=true;try{await window.__rs.open();show('D')}catch(e){b.disabled=false;msg(tr('開不了新的一卷，請重新整理再試。','Could not open a new scroll. Refresh and try again.'))}};h.append(b);
+   }else h.append(E('p',0,tr('現在已經有3卷在畫了，等其中一卷畫完就能再開新的。先去長卷評分和猜猜看吧。','3 scrolls are already in progress. A new one can open once one finishes. Go rate and guess meanwhile.')));
+   return}
+ }
+ if(!st&&!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,tr('你已經畫過一棒了，去看長卷吧。','You already drew a leg. Go look at the scroll.')));return}
  const n=nxt();
  if(!n){h.append(E('p',0,all()?tr('8棒都畫完了，去長卷評分和猜測吧。','All 8 legs are done. Go rate and guess on the scroll.'):tr('上一棒還在畫，過一會兒再來。','The previous leg is still being drawn. Check back soon.')));return}
- h.append(E('p',0,tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));
+ h.append(E('p',0,(st?tr('第'+st.scroll+'卷・','Scroll '+st.scroll+' · '):'')+tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));
  h.append(E('p','sub',tr('交出後，你這一棒右端6格會給下一棒參考；如果下一棒是AI，這6格會交給圖像工具續畫。','After you submit, the rightmost 6 columns of your leg guide the next artist. If the next leg is the AI, those 6 columns go to an image tool to continue.')));
  const r=E('div','row'),b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;const t=E('button','',tr('先試畫看看','Try the canvas first'));t.onclick=startDemo;r.append(b,t);h.append(r);
 }
@@ -508,11 +544,11 @@ $('#oOpsPrev').onclick=()=>{const m=$('#oOpsMsg');opsPx=null;try{const raw=$('#o
 $('#oOpsUse').onclick=async()=>{const m=$('#oOpsMsg');if(!opsPx){$('#oOpsPrev').click();if(!opsPx)return}try{await window.__aiStrokes(opsPx,opsList);m.textContent=tr('8號那棒已上傳。','No. 8’s leg is uploaded.');$('#oOps').value=''}catch(e){m.textContent=tr('上傳失敗：','Upload failed: ')+e.message}};
 $('#oDraw').onclick=async()=>{const od=$('#oDraw'),m=$('#oDrawMsg');od.dataset.busy='1';rO();m.textContent=tr('8號在畫，約需半分鐘…','No. 8 is drawing, about 30 seconds…');try{const j=await window.__aiDraw();m.textContent=tr('畫好了，共'+j.strokes+'筆。','Done in '+j.strokes+' strokes.')}catch(e){m.textContent=tr('沒畫成：','Failed: ')+e.message}od.dataset.busy='';rO()};
 $('#oUse').onclick=async()=>{const t=Date.now();try{await db.doc('slots/s'+ai.n).set({n:ai.n,claimedBy:'ORG',claimedAt:t,lastAt:t,px:upPx,doneAt:t});msg(tr('AI那棒已上傳。','AI leg uploaded.'))}catch(e){msg(tr('上傳失敗，請重試。','Upload failed. Try again.'))}};
-two($('#oRev'),tr('再點一次，確認揭曉','Tap again to confirm the reveal'),async()=>{try{await db.doc('meta/state').set({revealed:true,aiSlot:ai.n})}catch(e){msg(tr('揭曉失敗，請重試。','Reveal failed. Try again.'))}});
+two($('#oRev'),tr('再點一次，確認提前揭曉（不按的話，8棒畫完24小時後自動揭曉）','Tap again to reveal now (otherwise it reveals 24h after leg 8)'),async()=>{try{await db.doc('meta/state').set({revealed:true,aiSlot:ai.n})}catch(e){msg(tr('揭曉失敗，請重試。','Reveal failed. Try again.'))}});
 two($('#oClr'),tr('再點一次，清空全部','Tap again to clear everything'),async()=>{try{for(const k in slots)await db.doc('slots/'+k).delete();for(const k in votes)await db.doc('votes/'+k).delete();for(const k in notes)await db.doc('notes/'+k).delete();await db.doc('meta/state').delete();await db.doc('secret/ai').delete();myR={};myG=null;myPre=0;myRR=0;myPost=0;upPx=null;msg(tr('已清空。','Cleared.'))}catch(e){msg(tr('清空失敗，請重試。','Clear failed. Try again.'))}});
 function rO(){
  if(!owner)return;
- $('#oInfo').textContent=(ai?tr('AI那棒（只有你看得到）：第'+ai.n+'棒，','AI leg (only you can see this): leg '+ai.n+', ')+(done(ai.n)?tr('圖已上傳。','image uploaded.'):tr('還沒上傳圖。','no image yet.')):tr('還沒設定AI那棒。','AI leg not set yet.'))+(upPx?tr(' 預覽已清掉'+upIso+'個孤立像素。',' Preview removed '+upIso+' stray pixels.'):'')+tr(' 已有'+Object.keys(votes).length+'人提交。',' '+Object.keys(votes).length+' submitted.');
+ $('#oInfo').textContent=(RS()?tr('第'+RS().scroll+'卷。','Scroll '+RS().scroll+'. '):'')+(ai?tr('AI那棒（只有你看得到）：第'+ai.n+'棒，','AI leg (only you can see this): leg '+ai.n+', ')+(done(ai.n)?tr('圖已上傳。','image uploaded.'):tr('還沒上傳圖。','no image yet.')):tr('還沒設定AI那棒。','AI leg not set yet.'))+(upPx?tr(' 預覽已清掉'+upIso+'個孤立像素。',' Preview removed '+upIso+' stray pixels.'):'')+tr(' 已有'+Object.keys(votes).length+'人提交。',' '+Object.keys(votes).length+' submitted.');
  $('#oRes').disabled=$('#oSel').disabled=!!ai;
  $('#oUse').disabled=!(ai&&upPx&&!done(ai.n));
  const okPrev=!!(ai&&ai.n>1&&done(ai.n-1)&&!done(ai.n));$('#oManual').hidden=!(window.__aiStrokes&&window.Strokes&&okPrev);
@@ -526,9 +562,17 @@ function rO(){
 function show(t){tab=t||tab;['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
 ['G','D','O'].forEach(k=>$('#t'+k).onclick=()=>show(k));
 function sync(){
- if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid){mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'));}}
- const m=Object.values(slots).find(d=>d.claimedBy===uid&&!d.px);
- if(m&&!mine&&!sent)begin(m.n,m.claimedAt);
+ const st=RS(),lost=()=>{mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'))};
+ if(st){
+  if(st.scroll!==curScroll){curScroll=st.scroll;myR={};myG=null;myC=2;myRR=0;myPost=0;gotV=false;sel=1}
+  const my=st.my;
+  if(mine&&!sent&&!my)lost();
+  if(my&&!mine&&!sent){if(st.scroll!==my.scroll){window.__rs.set(my.scroll);return}begin(my.n,my.at)}
+ }else{
+  if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid)lost()}
+  const m=Object.values(slots).find(d=>d.claimedBy===uid&&!d.px);
+  if(m&&!mine&&!sent)begin(m.n,m.claimedAt);
+ }
  rG();rD();rO();
 }
 async function boot(){

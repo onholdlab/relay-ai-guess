@@ -10,6 +10,12 @@ Eight people draw one pixel scroll in relay. One leg is drawn by the AI artist �
 
 ## 8號怎麼畫 / How No. 8 draws
 
-主辦方按「讓8號畫這一棒」後,Supabase Edge Function `relay-ai-draw` 只把上一棒最右邊 6 欄交給 Claude,請它輸出一筆一筆的繪圖動作(畫筆、直線、矩形、橢圓、填色),用跟玩家一樣的工具執行成這一棒。揭曉後可以重播 8 號的作畫過程。
+每一卷的 AI 棒在開卷時隨機決定(第2到7棒)。上一棒交出後,網頁會提醒 Supabase Edge Function `relay-ai-draw` 只把上一棒最右邊 6 欄交給 Claude,請它輸出一筆一筆的繪圖動作(畫筆、直線、矩形、橢圓、填色),用跟玩家一樣的工具執行成這一棒。揭曉後可以重播 8 號的作畫過程。
 
-The host taps "Let No. 8 draw this leg". The `relay-ai-draw` Edge Function gives Claude only the last 6 columns of the previous leg and asks for a list of drawing strokes, which run through the same tools players use. After the reveal, anyone can replay how No. 8 drew.
+Each scroll's AI leg is picked at random (legs 2–7) when the scroll opens. When the leg before it is submitted, the page nudges the `relay-ai-draw` Edge Function, which gives Claude only the last 6 columns of the previous leg and asks for a list of drawing strokes, which run through the same tools players use. After the reveal, anyone can replay how No. 8 drew.
+
+## 多卷 / Multiple scrolls
+
+一卷沒有能領的棒時,玩家可以選擇開下一卷(同時最多3卷在畫)。8棒畫完24小時後自動揭曉,過去的卷都會保留。
+
+When no leg is free, a player can choose to open the next scroll (at most 3 in progress). Each scroll reveals 24 hours after leg 8, and past scrolls are kept.
