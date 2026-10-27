@@ -228,7 +228,7 @@ const EN=(()=>{let l=null;try{l=localStorage.getItem('lang')}catch(e){}return(l|
 ].forEach(([k,z,e])=>{const el=q(k);if(el)el.textContent=tr(z,e)});
 q('#tL').onclick=()=>{try{localStorage.setItem('lang',EN?'zh':'en');sessionStorage.setItem('rtab',typeof tab==='string'?tab:'G');sessionStorage.setItem('rsel',String(typeof sel==='number'?sel:1))}catch(e){}location.reload()}})();
 
-const T=8,W=48,H=64,G=6,IDLE=18e5,BEAT=6e4;
+const T=8,W=48,H=64,G=6,IDLE=864e5,BEAT=6e4;
 const PAL=["#F4F6F8","#C9D1D9","#7C8896","#2B3440","#0B1220","#E5484D","#F76B15","#FFB400","#F5E663","#8BD450","#2EA043","#2AC4B3","#2F4BFF","#6E56CF","#E26BD1","#8B5A3C"];
 const RGB=PAL.map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)));
 const AV=[".....hhhhhh.....", "....hhhhhhhh....", "....hyyhhyyh....", "....hssssssh....", "....skssssks....", "....ssssssss....", "....skwwwwks....", ".....skkkks.....", "......ssss......", "...pppwwwwppp...", "..pppppwwppppp..", ".ppppppwwpppppp.", ".pp.pyyyyyyp.pp.", ".pp.pppppppp.pp.", ".ss.pppmmppp.ss.", "....pppmmppp....", "....ppp..ppp....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "...wwkk..kkww...", "...kkkk..kkkk...", "................"],AVC={h:4,y:7,s:15,k:4,w:0,p:14,m:13};
@@ -442,7 +442,7 @@ function rD(){
  if(!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,tr('你已經畫過一棒了，去看長卷吧。','You already drew a leg. Go look at the scroll.')));return}
  const n=nxt();
  if(!n){h.append(E('p',0,all()?tr('8棒都畫完了，去長卷評分和猜測吧。','All 8 legs are done. Go rate and guess on the scroll.'):tr('上一棒還在畫，過一會兒再來。','The previous leg is still being drawn. Check back soon.')));return}
- h.append(E('p',0,tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過30分鐘沒有落筆，這一棒會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. If you stop drawing for 30 minutes, the leg goes to someone else.')));
+ h.append(E('p',0,tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));
  h.append(E('p','sub',tr('交出後，你這一棒右端6格會給下一棒參考；如果下一棒是AI，這6格會交給圖像工具續畫。','After you submit, the rightmost 6 columns of your leg guide the next artist. If the next leg is the AI, those 6 columns go to an image tool to continue.')));
  const r=E('div','row'),b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;const t=E('button','',tr('先試畫看看','Try the canvas first'));t.onclick=startDemo;r.append(b,t);h.append(r);
 }
@@ -458,7 +458,7 @@ function buildHero(){
  L.append(E('h2',0,tr('8個人接力畫一幅像素長卷，其中一棒是AI。','Eight people draw one pixel scroll in relay. One leg is AI.')));
  L.append(E('p','lead',tr('每人畫一棒，只看得到上一棒的尾巴。全部畫完後，大家一起猜：哪一棒是AI畫手「8號」畫的？','Each person draws one leg and only sees the tail of the previous one. Then everyone guesses which leg AI artist “No. 8” drew.')));
  const nt=E('div','nt0');nt.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="11" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 4h8M16 4v3M16 18v-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M5 29 27 7" stroke="var(--bad)" stroke-width="3" stroke-linecap="round"/></svg>';
- const nb=E('div');nb.append(E('b',0,tr('不倒數，慢慢畫','No countdown. Take your time.')),E('p',0,tr('大多數畫畫遊戲都在跟時間賽跑。這裡沒有計時器，你想畫多久就畫多久，畫到滿意再交。','Most drawing games race the clock. There is no timer here: draw as long as you like and submit when you are happy with it.')),E('small',0,tr('只要30分鐘內有落筆，這一棒就一直是你的。','As long as you draw something every 30 minutes, the leg stays yours.')));nt.append(nb);L.append(nt);
+ const nb=E('div');nb.append(E('b',0,tr('不倒數，慢慢畫','No countdown. Take your time.')),E('p',0,tr('大多數畫畫遊戲都在跟時間賽跑。這裡沒有計時器，你想畫多久就畫多久，畫到滿意再交。','Most drawing games race the clock. There is no timer here: draw as long as you like and submit when you are happy with it.')),E('small',0,tr('可以分好幾次畫完。只要24小時內有落筆，這一棒就一直是你的。','You can finish over several sittings. As long as you draw something within 24 hours, the leg stays yours.')));nt.append(nb);L.append(nt);
  const ol=E('ol','steps');[[tr('領一棒','Take a leg'),tr('接著上一棒最右邊6格畫下去。','Continue from the last 6 columns of the previous leg.')],[tr('慢慢畫','Draw at your pace'),tr('48×64像素、16色、8種工具，不限時間。','48×64 pixels, 16 colors, 8 tools, no time limit.')],[tr('找出AI','Find the AI'),tr('給每一棒評分，猜哪一棒是8號畫的，揭曉後看大家猜得多準。','Rate every leg, guess which one No. 8 drew, then see how everyone did.')]].forEach(([a,b])=>{const li=E('li'),d=E('div');d.append(E('b',0,a),document.createTextNode(b));li.append(d);ol.append(li)});L.append(ol);
  const ct=E('div','cta'),b1=E('button','on',tr('先試畫看看','Try the canvas')),b2=E('button','',tr('去領一棒','Take a leg')),b3=E('button','',tr('看長卷・找AI','See the scroll'));
  b1.onclick=startDemo;b2.onclick=()=>show('D');b3.onclick=()=>$('.scroll').scrollIntoView({behavior:'smooth',block:'center'});ct.append(b1,b2,b3);L.append(ct);
@@ -526,7 +526,7 @@ function rO(){
 function show(t){tab=t||tab;['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
 ['G','D','O'].forEach(k=>$('#t'+k).onclick=()=>show(k));
 function sync(){
- if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid){mine=0;msg(tr('超過30分鐘沒有落筆，這一棒已讓給別人。','You didn’t draw for 30 minutes, so the leg went to someone else.'));}}
+ if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid){mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'));}}
  const m=Object.values(slots).find(d=>d.claimedBy===uid&&!d.px);
  if(m&&!mine&&!sent)begin(m.n,m.claimedAt);
  rG();rD();rO();

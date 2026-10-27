@@ -65,7 +65,7 @@ language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'slots', (select coalesce(jsonb_agg(jsonb_build_object(
         'n', n, 'px', coalesce(px, ''), 'mine', device is not distinct from p_device,
-        'busy', px is null and device is not null and (device = 'ORG' or last_at > now() - interval '30 minutes'),
+        'busy', px is null and device is not null and (device = 'ORG' or last_at > now() - interval '24 hours'),
         'mineAt', case when device = p_device then (extract(epoch from claimed_at) * 1000)::bigint end
       ) order by n), '[]'::jsonb) from relay_slots),
     'meta', (select jsonb_build_object('revealed', revealed, 'aiSlot', case when revealed then ai_slot end,
@@ -77,7 +77,7 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 
--- 领取一棒:上一棒画完才能领;一台装置只能画一棒(主办方除外);30分钟没落笔的棒可被接手
+-- 领取一棒:上一棒画完才能领;一台装置只能画一棒(主办方除外);24小时没落笔的棒可被接手
 create or replace function public.relay_claim(p_device text, p_n int, p_token text default null) returns boolean
 language plpgsql security definer set search_path = public as $$
 declare s relay_slots;
@@ -88,7 +88,7 @@ begin
   if p_n > 1 and not exists (select 1 from relay_slots where n = p_n - 1 and px is not null) then raise exception 'not_ready'; end if;
   select * into s from relay_slots where n = p_n for update;
   if s.px is not null or s.device = 'ORG' then raise exception 'taken'; end if;
-  if s.device is not null and s.device <> p_device and s.last_at > now() - interval '30 minutes' then raise exception 'taken'; end if;
+  if s.device is not null and s.device <> p_device and s.last_at > now() - interval '24 hours' then raise exception 'taken'; end if;
   update relay_slots set device = p_device, claimed_at = now(), last_at = now() where n = p_n;
   return true;
 end $$;
