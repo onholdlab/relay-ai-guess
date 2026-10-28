@@ -31,7 +31,7 @@ button:disabled{opacity:.45;cursor:default}
 /* top bar */
 .top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 6px}
 .top .tabs{margin:0}
-#lang{min-height:40px}
+#lang,#lang option{min-height:40px;font-family:"Cubic11",system-ui,sans-serif}
 
 /* 8號 */
 .who{display:flex;gap:14px;align-items:center;margin:16px 0}
@@ -60,7 +60,7 @@ button:disabled{opacity:.45;cursor:default}
 .mpal{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .mpal button{aspect-ratio:1;min-height:0;padding:0}
 .mtl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
-.mtl span{font-size:13px;line-height:1.4;padding:4px 8px;background:var(--panel);border-radius:999px;text-align:center;cursor:help}
+.mtl span{font-size:13px;line-height:1.4;padding:4px 8px;background:var(--panel);border-radius:14px;word-break:keep-all;text-align:center;cursor:help}
 .six{position:absolute;top:0;bottom:0;left:0;width:11.111%;pointer-events:none;opacity:0;background:linear-gradient(to right,rgba(255,255,255,.85) 1px,transparent 1px) 0 0/calc(100%/6) 100%,rgba(255,255,255,.18);box-shadow:1px 0 0 rgba(255,255,255,.85)}
 .six.on{opacity:1}
 #tip{position:fixed;z-index:30;max-width:260px;padding:8px 10px;background:var(--ink);color:var(--bg);font-size:14px;line-height:1.5;pointer-events:none}
