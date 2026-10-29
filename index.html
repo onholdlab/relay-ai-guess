@@ -177,6 +177,24 @@ textarea{font:inherit;color:var(--ink);background:var(--chip);border:0;padding:8
 .top button:active,.top select:active,.cta button:active{color:var(--acc);transform:scale(1.15)}
 .cta button{font-size:20px}
 #goB{color:var(--acc)}
+</style><style>
+/* 站內語言選單：保留原本 select 的值與 change 行為。 */
+.locale-menu{position:relative;z-index:30;max-width:100%;font:inherit}
+.locale-trigger{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;list-style:none}
+.locale-trigger::-webkit-details-marker{display:none}
+.locale-trigger::after{content:"";width:7px;height:7px;border-right:2px solid;border-bottom:2px solid;transform:translateY(-2px) rotate(45deg);margin-left:auto}
+.locale-menu[open] .locale-trigger::after{transform:translateY(2px) rotate(225deg)}
+.locale-options{position:fixed;z-index:100;min-width:190px;max-width:calc(100vw - 24px);overflow-y:auto;overscroll-behavior:contain;padding:4px}
+.locale-options button{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;cursor:pointer;font:inherit}
+.locale-options button::before{content:"";width:6px;height:6px;flex:none;background:transparent}
+
+.locale-trigger{padding:6px 8px;color:var(--ink);font-family:"Cubic11","Galmuri11",system-ui,sans-serif}
+.locale-options{background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--ink)}
+.top .locale-options button{padding:8px 12px;background:transparent;color:var(--ink);transform:none;transition:none}
+.top .locale-options button:hover{background:var(--chip);transform:none}
+.top .locale-options button[aria-pressed="true"]{background:var(--acc);color:var(--on)}
+.locale-options button[aria-pressed="true"]::before{background:currentColor}
+.locale-trigger:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 </style></head>
 <body><main>
 <h1 id="i0">8棒接力</h1>
@@ -675,4 +693,28 @@ async function boot(){
  if(owner)db.doc('secret/ai').onSnapshot(s=>{ai=s.exists?s.data():null;rO()},()=>{});
 }
 boot();
-</script></body></html>
+</script>
+<script>
+(function(){
+ const select=document.getElementById('lang');
+ const menu=document.createElement('details');menu.className='locale-menu';menu.id='localeMenu';
+ const trigger=document.createElement('summary');trigger.className='locale-trigger';trigger.id='localeTrigger';
+ const label=document.createElement('span');trigger.append(label);
+ const panel=document.createElement('div');panel.className='locale-options';panel.id='localeOptions';panel.setAttribute('role','group');panel.setAttribute('aria-label',select.getAttribute('aria-label')||'Language');
+ menu.append(trigger,panel);select.after(menu);select.hidden=true;
+ for(const option of select.options){const button=document.createElement('button');button.type='button';button.dataset.value=option.value;button.lang=option.value==='zh'?'zh-Hant':option.value;button.textContent=option.textContent;
+  button.onclick=()=>{select.value=option.value;sync();close(true);select.dispatchEvent(new Event('change',{bubbles:true}))};panel.append(button)}
+ function sync(){label.textContent=select.selectedOptions[0].textContent;trigger.setAttribute('aria-label',panel.getAttribute('aria-label')+': '+label.textContent);panel.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.value===select.value)))}
+ function close(focus){menu.open=false;if(focus)trigger.focus()}
+ function position(){if(!menu.open)return;const r=trigger.getBoundingClientRect(),below=innerHeight-r.bottom-12,above=r.top-12,down=below>=Math.min(panel.scrollHeight,280)||below>=above;
+  panel.style.maxHeight=Math.max(44,Math.min(360,down?below:above))+'px';panel.style.left=Math.max(12,Math.min(r.left,innerWidth-panel.offsetWidth-12))+'px';panel.style.top=(down?r.bottom+6:Math.max(6,r.top-panel.offsetHeight-6))+'px'}
+ menu.addEventListener('toggle',position);select.addEventListener('change',sync);
+ document.addEventListener('click',e=>{if(!menu.contains(e.target))close(false)});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.open){e.preventDefault();close(true)}});
+ menu.addEventListener('focusout',()=>requestAnimationFrame(()=>{if(!menu.contains(document.activeElement))close(false)}));
+ menu.addEventListener('keydown',e=>{if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;e.preventDefault();menu.open=true;
+  const buttons=[...panel.querySelectorAll('button')],i=buttons.indexOf(document.activeElement);buttons[i<0?(e.key==='ArrowDown'?0:buttons.length-1):(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length].focus();position()});
+ addEventListener('resize',position);addEventListener('scroll',position,{passive:true});sync();
+})();
+</script>
+</body></html>
