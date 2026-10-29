@@ -374,7 +374,7 @@ async function openHistory(id){
  historyId=id;$('#historyDetail').textContent=tr('讀取中…','Loading…');rScr();
  try{historyData=await window.__rs.history(id);historySel=1;
   const v=(historyData.votes||[]).find(x=>x.me);
-  historyR={...(v&&v.r||{})};historyG=v&&v.g||null;historyC=v&&v.c||2;historyPre=v&&v.pre||0;
+  historyR={...(v&&v.r||{})};historyG=v&&v.g||null;historyC=v&&v.c||2;historyPre=v&&v.pre||myPre||(myV()&&myV().pre)||0;
   renderHistory();$('#historyDetail').scrollIntoView({behavior:'smooth',block:'start'});
  }catch(e){$('#historyDetail').textContent=tr('讀取失敗，請重試。','Loading failed. Try again.')}
 }
@@ -391,7 +391,6 @@ function renderHistory(){
  const lock=!!(v&&d.meta&&d.meta.revealed)||canW===false;
  card.append(E('b',0,tr('第'+historySel+'棒','Leg '+historySel)));
  if(!completed){card.append(E('p','sub',tr('還沒有畫完的棒。','No completed legs yet.')));return}
- if(!v&&!historyPre&&!lock){card.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{historyPre=k;renderHistory()}));return}
  if(!doneH(historySel)){card.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  card.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),historyR[historySel],k=>{historyR[historySel]=k;renderHistory()},lock));
  const guess=E('button',historyG===historySel?'on':'',historyG===historySel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));
@@ -402,7 +401,8 @@ function renderHistory(){
  [[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([name,k])=>{const b=E('button',historyC===k?'on':'',name);b.onclick=()=>{historyC=k;renderHistory()};row.append(b)});fin.append(row);
  const missing=ss.filter(x=>x.px&&!historyR[x.n]);
  const submit=E('button','on',v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));
- submit.disabled=!historyG||missing.length>0;fin.append(submit);
+ submit.disabled=!historyG||missing.length>0||!historyPre;fin.append(submit);
+ if(!historyPre)fin.append(E('p','sub',tr('請先在最新卷回答 AI 印象題，再回來投票。','Answer the AI question on the latest scroll first, then vote here.')));
  if(missing.length)fin.append(E('p','sub',tr('還差第'+missing.map(x=>x.n).join('、')+'棒沒評分。','Still to rate: leg '+missing.map(x=>x.n).join(', ')+'.')));
  submit.onclick=async()=>{submit.disabled=true;try{await window.__rs.vote(d.scroll,{r:historyR,g:historyG,c:historyC,pre:historyPre});
   historyData=await window.__rs.history(d.scroll);renderHistory();msg(tr('已提交。','Submitted.'))
