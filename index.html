@@ -389,7 +389,7 @@ function renderHistory(){
  canvas.width=384;canvas.height=64;inner.append(canvas,segs);strip.append(inner);scroll.append(strip);root.append(scroll);
  const cx=canvas.getContext('2d'),ss=d.slots||[],doneH=n=>!!ss.find(x=>x.n===n&&x.px),completed=ss.filter(x=>x.px).length;
  for(let n=1;n<=T;n++){const x=ss.find(y=>y.n===n);if(x&&x.px)put2(cx,x.px,(n-1)*W);
-  const b=E('button','seg'+(doneH(n)?'':' empty')+(n===historySel?' sel':''),n);b.style.left=(n-1)*12.5+'%';
+  const label=doneH(n)?String(n):n+(x&&x.busy?tr(' 進行中',' in progress'):tr(' 待畫',' open'));const b=E('button','seg'+(doneH(n)?'':' empty')+(n===historySel?' sel':''),label);b.style.left=(n-1)*12.5+'%';
   b.onclick=()=>{historySel=n;renderHistory()};segs.append(b)}
  const card=E('div','card');root.append(card);const v=(d.votes||[]).find(x=>x.me);
  const lock=!!(v&&d.meta&&d.meta.revealed)||canW===false;
