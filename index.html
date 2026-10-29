@@ -623,9 +623,8 @@ let choices=[],choiceLoading=false,choiceAt=0;
  if(canW===false){body.hidden=true;h.append(E('p',0,tr('你現在是唯讀權限。請主辦方在分享選單裡把你設為 Contributor。','You have view-only access. Ask the host to make you a Contributor in the share menu.')));return}
  if(live()){body.hidden=false;h.append(E('b','tm',tr('第'+mine+'棒','Leg '+mine)));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('交出','Submit'),()=>send()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
  body.hidden=true;
- const st=RS();renderChoices(st);
+ const st=RS();if(st)loadChoices();renderChoices(st);
  if(st&&!owner){
-  loadChoices();
   if(!choices.some(x=>x.n)&&!st.drawScroll){
    const drew=Object.values(slots).some(d=>d.claimedBy===uid&&d.px),nx=Math.max(...st.scrolls.map(x=>x.id))+1;
    if(st.canOpen){
