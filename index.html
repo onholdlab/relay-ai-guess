@@ -209,7 +209,7 @@ textarea{font:inherit;color:var(--ink);background:var(--chip);border:0;padding:8
  <div class="shead"><b id="sNo"></b><span id="sPr"></span><button id="sHist" hidden></button></div>
  <div class="scroll"><div class="strip"><div class="inner"><canvas id="big" width="384" height="64"></canvas><div id="segs"></div></div><div class="marks" id="marks"></div></div></div>
  <div class="card" id="pick"></div>
- <div class="card" id="fin"></div>
+ <div id="fin"></div>
  <div class="card" id="talk" hidden></div>
  <div class="hist" id="hist" hidden><h2 id="hT"></h2><div class="scr" id="scr"></div><div id="historyDetail"></div></div>
 </section>
@@ -430,10 +430,11 @@ function rP(){
  const lock=!!(v&&meta.revealed)||canW===false||!db,R=myR,g=myG;
  if(!nDone()){c.append(E('p',0,tr('還沒有畫完的棒。第1棒畫完後就能開始評分和猜測。','No legs are finished yet. Rating and guessing open once leg 1 is done.')));return}
  if(!v&&!lock&&!myPre){c.append(E('b',0,tr('開始前一題','One question first')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;rG()}));return}
- c.append(E('b',0,tr('第'+sel+'棒','Leg '+sel)));
+ const titleRow=E('div','row');titleRow.append(E('b',0,tr('第'+sel+'棒','Leg '+sel)));if(!all())titleRow.append(E('span','sub',tr('接力進行中：已完成'+nDone()+'/8棒。','Relay in progress: '+nDone()+'/8 legs done.')));c.append(titleRow);
  if(!done(sel)){c.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  c.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
  const b=E('button',g===sel?'on':'',g===sel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));b.disabled=lock;b.onclick=()=>{myG=sel;rG()};c.append(b);
+ const confidence=E('div','row');[[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const x=E('button',myC===k?'on':'',t);x.disabled=lock;x.onclick=()=>{myC=k;rG()};confidence.append(x)});c.append(confidence,$('#fin'));
 }
 function rF(){
  const c=$('#fin'),v=myV();c.textContent='';c.hidden=!nDone();if(!nDone())return;
@@ -441,11 +442,7 @@ function rF(){
  if(canW===false||!db){c.append(E('p',0,tr('你現在是唯讀權限，只能看，不能提交。','You have view-only access and cannot submit.')));return}
  if(!myPre){c.hidden=true;return}
  const need=[];for(let n=1;n<=T;n++)if(done(n)&&!myR[n])need.push(n);
- if(!all())c.append(E('p','sub',tr('接力進行中：已完成'+nDone()+'/8棒。','Relay in progress: '+nDone()+'/8 legs done.')));
  if(v)c.append(E('p','sub',tr('已提交。揭曉前都可以改評分和猜測；有新的棒畫完時，記得也給它評分。','Submitted. You can change your ratings and guess until the reveal. Rate new legs as they finish.')));
- const row=E('div','row');row.append(E('span',0,tr('你的把握','Confidence')));
- [[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const b=E('button',myC===k?'on':'',t);b.onclick=()=>{myC=k;rF()};row.append(b)});
- c.append(row);
  const s=E('button','on',!myG?tr('先選一棒當作AI','Pick a leg as the AI first'):v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));s.disabled=!myG||!done(myG)||need.length>0;c.append(s);
  if(need.length)c.append(E('p','sub',tr('還差第'+need.join('、')+'棒沒評分。','Still to rate: leg '+need.join(', ')+'.')));
  if(meta.revealed)c.append(E('p','sub',tr('答案已經揭曉，提交後才看得到。','The answer is out. Submit to see it.')));
