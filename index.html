@@ -604,13 +604,16 @@ let choices=[],choiceLoading=false,choiceAt=0;
       if(k>1&&!ss.some(y=>y.n===k-1&&y.px)){reason=tr('等待上一棒','Waiting for previous leg');break}
       if(x&&x.busy){reason=tr('這棒進行中','Leg in progress');break}
       n=k;break}}
-    return{id:info.id,n,reason}})}catch(e){}choiceLoading=false;if(tab==='D')rD()}
+    return{id:info.id,n,reason,data:result.value}})}catch(e){}choiceLoading=false;if(tab==='D')rD()}
  function renderChoices(st){const box=$('#dScrolls');box.textContent='';box.hidden=!st||!st.scrolls||!st.scrolls.some(x=>!x.finished)||demo||!!mine;if(box.hidden)return;
-  box.append(E('h2',0,tr('進行中的畫卷','Scrolls in progress')));
-  const row=E('div','row');(st.scrolls||[]).filter(x=>!x.finished).forEach(x=>{const choice=choices.find(y=>y.id===x.id),label=tr('第'+x.id+'卷・'+x.done+'/8棒','Scroll '+x.id+' · '+x.done+'/8 legs');
-    const b=E('button',x.id===st.scroll?'on':'',label);b.type='button';b.onclick=()=>window.__rs.set(x.id);row.append(b);
-    const note=E('span','sub',choice?(choice.n?tr('可接第'+choice.n+'棒','Leg '+choice.n+' available'):choice.reason):tr('檢查中…','Checking…'));row.append(note)});
-  box.append(row)}
+  const active=(st.scrolls||[]).filter(x=>!x.finished),nav=E('div','row');box.append(E('h2',0,tr('進行中的畫卷','Scrolls in progress')));
+  active.forEach(x=>{const b=E('button','',tr('第'+x.id+'卷','Scroll '+x.id));b.type='button';b.onclick=()=>{const target=$('#drawScroll'+x.id);if(target)target.scrollIntoView({behavior:'smooth',block:'start'})};nav.append(b)});box.append(nav);
+  active.forEach(info=>{const choice=choices.find(x=>x.id===info.id),d=choice&&choice.data;if(!d)return;
+    const section=E('section');section.id='drawScroll'+info.id;section.append(E('h3',0,tr('第'+info.id+'卷・已完成'+info.done+'/8棒','Scroll '+info.id+' · '+info.done+'/8 legs')));
+    const scroll=E('div','scroll'),strip=E('div','strip'),inner=E('div','inner'),canvas=E('canvas'),segs=E('div');canvas.width=384;canvas.height=64;inner.append(canvas,segs);strip.append(inner);scroll.append(strip);section.append(scroll);
+    const cx=canvas.getContext('2d'),ss=d.slots||[];for(let n=1;n<=T;n++){const slot=ss.find(x=>x.n===n);if(slot&&slot.px)put2(cx,slot.px,(n-1)*W);const label=slot&&slot.px?String(n):n+(slot&&slot.busy?tr(' 進行中',' in progress'):tr(' 待畫',' open'));const seg=E('button','seg'+(slot&&slot.px?'':' empty'),label);seg.type='button';seg.style.left=(n-1)*12.5+'%';segs.append(seg)}
+    const row=E('div','row'),note=E('span','sub',choice?(choice.n?tr('可接第'+choice.n+'棒','Leg '+choice.n+' available'):choice.reason):tr('檢查中…','Checking…'));row.append(note);
+    if(choice&&choice.n){const pick=E('button','on',tr('接第'+choice.n+'棒','Take leg '+choice.n));pick.onclick=()=>window.__rs.set(info.id);row.append(pick)}section.append(row);box.append(section)})}
  function rD(){
  const h=$('#dHead'),body=$('#dBody'),m=$('main'),dr=tab==='D'&&live();h.textContent='';m.classList.toggle('dr',dr);if(!dr)m.classList.remove('pp');
  $('#send').textContent=demo?tr('結束試畫','End practice'):tr('交出這一棒','Submit this leg');
