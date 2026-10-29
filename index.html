@@ -623,7 +623,7 @@ let choices=[],choiceLoading=false,choiceAt=0;
 }
 
 /* hero：左說明・中畫布示意・右調色盤與工具 */
-const DEMO_PREV=[{tool:'rect',color:12,from:[0,0],to:[47,63],solid:true},{tool:'rect',color:4,from:[2,2],to:[45,5],solid:true},{tool:'rect',color:4,from:[2,58],to:[45,61],solid:true},{tool:'rect',color:4,from:[2,2],to:[5,61],solid:true},{tool:'rect',color:4,from:[42,2],to:[45,61],solid:true}];
+const DEMO_PREV=[{tool:'rect',color:11,from:[0,0],to:[47,43],solid:true},{tool:'rect',color:10,from:[0,44],to:[47,63],solid:true},{tool:'rect',color:15,from:[44,32],to:[46,46],solid:true},{tool:'ellipse',color:10,from:[39,22],to:[47,35],solid:true}];
 const DEMO_OPS=[{tool:'rect',color:11,from:[0,0],to:[47,43],solid:true},{tool:'rect',color:10,from:[0,44],to:[47,63],solid:true},{tool:'ellipse',color:9,from:[18,36],to:[47,54],solid:true},{tool:'ellipse',color:8,from:[33,5],to:[42,14],solid:true},{tool:'ellipse',color:0,from:[3,9],to:[15,14],solid:true},{tool:'ellipse',color:0,from:[8,6],to:[17,12],solid:true},{tool:'rect',color:15,from:[6,31],to:[20,48],solid:true},{tool:'line',color:5,size:2,from:[4,31],to:[13,22]},{tool:'line',color:5,size:2,from:[13,22],to:[22,31]},{tool:'fill',color:5,at:[13,27]},{tool:'rect',color:4,from:[11,40],to:[14,48],solid:true},{tool:'rect',color:8,from:[16,34],to:[19,37],solid:true},{tool:'pen',color:7,size:2,points:[[15,63],[18,58],[24,54],[31,52],[39,51],[47,50]]},{tool:'pen',color:4,size:1,points:[[25,13],[26,14],[27,13],[28,14],[29,13]]}];
 const tailG=px=>{const g=new Uint8Array(G*H);for(let y=0;y<H;y++)for(let x=0;x<G;x++)g[y*G+x]=parseInt(px[y*W+W-G+x],16)||0;return g};
 function paintTo(c,g,px){const cx=c.getContext('2d'),id=cx.createImageData(G+W,H),d=id.data;for(let y=0;y<H;y++)for(let x=0;x<G+W;x++){const v=x<G?g[y*G+x]:parseInt(px[y*W+x-G],16),p=RGB[v]||RGB[0],k=(y*(G+W)+x)*4;d[k]=p[0];d[k+1]=p[1];d[k+2]=p[2];d[k+3]=255}cx.putImageData(id,0,0)}
@@ -660,7 +660,7 @@ function startDemo(){
  let last=0;for(let n=T;n>=1;n--)if(done(n)){last=n;break}
  const source=last&&S(last)&&S(last).px?S(last).px:Strokes.render(DEMO_PREV);
  ghost=tailG(source);
- msg(last?tr('已載入最新一棒的尾端。','Loaded the latest leg tail.'):tr('上一棒尚未完成，先顯示示意圖。','The previous leg is not finished yet; showing a sample.'));
+ msg('');
  show('D');paint();rT();
 }
 function endDemo(){demo=false;ghost=null;cur=new Uint8Array(W*H);show('D')}
