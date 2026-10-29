@@ -417,9 +417,10 @@ function rScr(){
  const cur=st&&st.scrolls&&st.scrolls.find(x=>x.id===st.scroll);
  $('#sNo').textContent=cur?tr('第'+cur.id+'卷','Scroll '+cur.id):'';
  $('#sPr').textContent=cur?stat(cur):nDone()+'/8';
- const many=!!(st&&st.scrolls&&st.scrolls.length>1);$('#hist').hidden=$('#sHist').hidden=!many;if(!many)return;
+ const older=(st&&st.scrolls||[]).filter(x=>x.id!==st.scroll);
+ const many=older.length>0;$('#hist').hidden=$('#sHist').hidden=!many;if(!many)return;
  $('#sHist').onclick=()=>$('#hist').scrollIntoView({behavior:'smooth',block:'start'});
- st.scrolls.forEach(x=>{const b=E('button',x.id===historyId?'on':'',tr('第'+x.id+'卷','Scroll '+x.id));b.append(E('small',0,stat(x)));b.onclick=()=>openHistory(x.id);box.append(b)});
+ older.forEach(x=>{const b=E('button',x.id===historyId?'on':'',tr('第'+x.id+'卷','Scroll '+x.id));b.append(E('small',0,stat(x)));b.onclick=()=>openHistory(x.id);box.append(b)});
 }
 function rP(){
  const c=$('#pick');c.textContent='';const v=myV();
