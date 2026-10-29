@@ -657,8 +657,11 @@ function buildHero(){
 function startDemo(){
  if(mine&&!sent){show('D');return}
  demo=true;hist=[];redo=[];lastPt=null;zoom=1;$('#cvw').style.width='100%';cur=new Uint8Array(W*H);
- ghost=tailG(Strokes.render(DEMO_PREV));
- msg('');show('D');paint();rT();
+ let last=0;for(let n=T;n>=1;n--)if(done(n)){last=n;break}
+ const source=last&&S(last)&&S(last).px?S(last).px:Strokes.render(DEMO_PREV);
+ ghost=tailG(source);
+ msg(last?tr('已載入最新一棒的尾端。','Loaded the latest leg tail.'):tr('上一棒尚未完成，先顯示示意圖。','The previous leg is not finished yet; showing a sample.'));
+ show('D');paint();rT();
 }
 function endDemo(){demo=false;ghost=null;cur=new Uint8Array(W*H);show('D')}
 
