@@ -708,7 +708,7 @@ function rO(){
 }
 
 /* shell */
-function show(t){tab=t||tab;window.__relayDrawView=tab==='D';if(tab==='G'){const s=RS(),latest=s&&(s.scrolls||[]).filter(x=>!x.finished).at(-1);if(latest&&s.scroll!==latest.id)window.__rs.set(latest.id)}['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
+function show(t){tab=t||tab;if(tab==='G')msg('');window.__relayDrawView=tab==='D';if(tab==='G'){const s=RS(),latest=s&&(s.scrolls||[]).filter(x=>!x.finished).at(-1);if(latest&&s.scroll!==latest.id)window.__rs.set(latest.id)}['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
 ['G','D','O'].forEach(k=>$('#t'+k).onclick=()=>show(k));
 function sync(){
  const st=RS(),lost=()=>{mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'))};
