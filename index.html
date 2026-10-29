@@ -270,7 +270,8 @@ function fire(){if(!S)return;
 }
 const CS=()=>(S&&S.my&&S.my.scroll)||(S&&S.scroll);
 const nudge=sc=>{fetch(URL+'/functions/v1/relay-ai-draw',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({scroll:sc})}).catch(()=>{})};
-async function poll(){try{const r=await rpc('relay_state',{p_device:dev,p_token:tok(),p_scroll:SC,p_v:ver});if(!r||r.same)return;S=r;ver=r.v;
+let requestSeq=0;
+ async function poll(){const seq=++requestSeq;try{const r=await rpc('relay_state',{p_device:dev,p_token:tok(),p_scroll:SC,p_v:ver});if(seq!==requestSeq||!r||r.same)return;S=r;ver=r.v;
  const cur=(S.scrolls||[]).find(x=>x.id===S.scroll);if(cur&&!cur.finished&&cur.done>0&&!nudged[S.scroll]){nudged[S.scroll]=1;nudge(S.scroll)}
  fire()}catch(e){}}
 const fresh=()=>{ver=null;return poll()};
@@ -667,7 +668,7 @@ function sync(){
   if(st.scroll!==curScroll){curScroll=st.scroll;myR={};myG=null;myC=2;myRR=0;myPost=0;gotV=false;sel=1}
   const my=st.my;
   if(mine&&!sent&&!my)lost();
-  if(my&&!mine&&!sent){if(st.scroll!==my.scroll){window.__rs.set(my.scroll);return}begin(my.n,my.at)}
+  if(my&&!mine&&!sent){if(st.scroll!==my.scroll){if(tab==='D')window.__rs.set(my.scroll);return}begin(my.n,my.at)}
  }else{
   if(mine&&!sent){const d=S(mine);if(!d||d.claimedBy!==uid)lost()}
   const m=Object.values(slots).find(d=>d.claimedBy===uid&&!d.px);
