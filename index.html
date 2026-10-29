@@ -635,7 +635,7 @@ let choices=[],choiceLoading=false,choiceAt=0;
  if(!st&&!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,tr('你已經畫過一棒了，去看長卷吧。','You already drew a leg. Go look at the scroll.')));return}
  const n=nxt();
  if(!n){h.append(E('p',0,tr('這卷目前無法接棒。請查看下方進行中的畫卷，選擇標示「可接」的卷。','This scroll is not available to draw in. Choose one marked available below.')));return}
- h.append(E('p',0,(st?tr('第'+st.scroll+'卷・','Scroll '+st.scroll+' · '):'')+tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));
+ const takeInfo=E('p');takeInfo.append(document.createTextNode((st?tr('第'+st.scroll+'卷・','Scroll '+st.scroll+' · '):'')+tr('下一棒是第'+n+'棒：','Next up is leg '+n+': ')),E('span','sub',tr('不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));h.append(takeInfo);
  h.append(E('p','sub',tr('交出後，你這一棒右端6格會給下一棒參考；如果下一棒是AI，這6格會交給圖像工具續畫。','After you submit, the rightmost 6 columns of your leg guide the next artist. If the next leg is the AI, those 6 columns go to an image tool to continue.')));
  const r=E('div','row'),b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;const t=E('button','',tr('先試畫看看','Try the canvas first'));t.onclick=startDemo;r.append(b,t);h.append(r);
 }
