@@ -426,14 +426,15 @@ function rScr(){
 }
 function rP(){
  const c=$('#pick');c.textContent='';const v=myV();
+ if(!myPre&&uid){try{myPre=+localStorage.getItem('rl_ai_pre_'+uid)||0}catch(e){}}
  if(v&&!gotV){gotV=true;myR=Object.assign({},v.r||{});myG=v.g;myC=v.c||2;myPre=v.pre||myPre}
  const lock=!!(v&&meta.revealed)||canW===false||!db,R=myR,g=myG;
  if(!nDone()){c.append(E('p',0,tr('還沒有畫完的棒。第1棒畫完後就能開始評分和猜測。','No legs are finished yet. Rating and guessing open once leg 1 is done.')));return}
- if(!v&&!lock&&!myPre){c.append(E('b',0,tr('開始前一題','One question first')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;rG()}));return}
+ if(!v&&!lock&&!myPre){c.append(E('b',0,tr('開始前一題','One question first')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;try{localStorage.setItem('rl_ai_pre_'+uid,String(k))}catch(e){}rG()}));return}
  const titleRow=E('div','row');titleRow.append(E('b',0,tr('第'+sel+'棒','Leg '+sel)));if(!all())titleRow.append(E('span','sub',tr('接力進行中：已完成'+nDone()+'/8棒。','Relay in progress: '+nDone()+'/8 legs done.')));c.append(titleRow);
  if(!done(sel)){c.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  c.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
- const b=E('button',g===sel?'on':'',g===sel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));b.disabled=lock;b.onclick=()=>{myG=sel;rG()};c.append(b);
+ const b=E('button',g===sel?'on':'',g===sel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));b.disabled=lock;b.onclick=()=>{myG=myG===sel?null:sel;rG()};c.append(b);
  const confidence=E('div','row');[[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const x=E('button',myC===k?'on':'',t);x.disabled=lock;x.onclick=()=>{myC=k;rG()};confidence.append(x)});c.append(confidence,$('#fin'));
 }
 function rF(){
@@ -446,7 +447,7 @@ function rF(){
  const s=E('button','on',!myG?tr('先選一棒當作AI','Pick a leg as the AI first'):v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));s.disabled=!myG||!done(myG)||need.length>0;c.append(s);
  if(need.length)c.append(E('p','sub',tr('還差第'+need.join('、')+'棒沒評分。','Still to rate: leg '+need.join(', ')+'.')));
  if(meta.revealed)c.append(E('p','sub',tr('答案已經揭曉，提交後才看得到。','The answer is out. Submit to see it.')));
- s.onclick=async()=>{s.disabled=true;try{const r={};for(let n=1;n<=T;n++)if(done(n)&&myR[n])r[n]=myR[n];await db.doc('votes/'+uid).set({r,g:myG,c:myC,pre:myPre,ar:!!meta.revealed,nd:nDone(),at:Date.now()});msg(v?tr('已更新。','Updated.'):'')}catch(e){msg(tr('提交失敗，請重試。','Submit failed. Try again.'));s.disabled=false}};
+ s.onclick=async()=>{s.disabled=true;try{const r={};for(let n=1;n<=T;n++)if(done(n)&&myR[n])r[n]=myR[n];await db.doc('votes/'+uid).set({r,g:myG,c:myC,pre:myPre,ar:!!meta.revealed,nd:nDone(),at:Date.now()});msg(v?tr('已更新。','Updated.'):tr('已提交。','Submitted.'))}catch(e){msg(tr('提交失敗，請重試。','Submit failed. Try again.'));s.disabled=false}};
 }
 function res(c){
  const K=meta.aiSlot,v=myV(),vs=Object.values(votes).filter(x=>!x.ar),late=Object.keys(votes).length-vs.length;
