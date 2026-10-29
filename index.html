@@ -225,6 +225,7 @@ textarea{font:inherit;color:var(--ink);background:var(--chip);border:0;padding:8
   <div class="trow"><div class="row" id="tools"></div><div class="row" id="opts"></div></div>
   <button id="send" class="on"></button></div>
  </div>
+ <div class="card" id="dScrolls" hidden></div>
 </section>
 
 <section id="vO" hidden>
@@ -594,20 +595,35 @@ async function claim(){
  }catch(e){msg(tr('領取失敗，請重試。','Could not take the leg. Try again.'))}
 }
 let choices=[],choiceLoading=false,choiceAt=0;
- async function loadChoices(){const st=RS();if(!st||choiceLoading||Date.now()-choiceAt<5000)return;choiceLoading=true;choiceAt=Date.now();try{const rows=await Promise.all((st.scrolls||[]).filter(x=>!x.finished).map(x=>window.__rs.history(x.id)));choices=rows.map(d=>{const ss=d.slots||[];let n=0;if(!ss.some(x=>x.mine&&x.px))for(let k=1;k<=T;k++){const x=ss.find(y=>y.n===k);if(x&&x.px)continue;if(k>1&&!ss.some(y=>y.n===k-1&&y.px))break;if(x&&x.busy)break;n=k;break}return{id:d.scroll,n}}).filter(x=>x.n)}catch(e){}choiceLoading=false;if(tab==='D')rD()}
+ async function loadChoices(){const st=RS();if(!st||choiceLoading||Date.now()-choiceAt<15000)return;choiceLoading=true;choiceAt=Date.now();
+  try{const active=(st.scrolls||[]).filter(x=>!x.finished),rows=await Promise.allSettled(active.map(x=>x.id===st.scroll?Promise.resolve(st):window.__rs.history(x.id)));
+   choices=rows.map((result,i)=>{const info=active[i];if(result.status!=='fulfilled')return{id:info.id,n:0,reason:tr('讀取失敗，請重試','Loading failed; retry')};
+    const ss=result.value.slots||[];let n=0,reason='';
+    if(ss.some(x=>x.mine&&x.px))reason=tr('你已在這卷畫過','You already drew in this scroll');
+    else{for(let k=1;k<=T;k++){const x=ss.find(y=>y.n===k);if(x&&x.px)continue;
+      if(k>1&&!ss.some(y=>y.n===k-1&&y.px)){reason=tr('等待上一棒','Waiting for previous leg');break}
+      if(x&&x.busy){reason=tr('這棒進行中','Leg in progress');break}
+      n=k;break}}
+    return{id:info.id,n,reason}})}catch(e){}choiceLoading=false;if(tab==='D')rD()}
+ function renderChoices(st){const box=$('#dScrolls');box.textContent='';box.hidden=!st||!st.scrolls||!st.scrolls.some(x=>!x.finished)||demo||!!mine;if(box.hidden)return;
+  box.append(E('h2',0,tr('進行中的畫卷','Scrolls in progress')));
+  const row=E('div','row');(st.scrolls||[]).filter(x=>!x.finished).forEach(x=>{const choice=choices.find(y=>y.id===x.id),label=tr('第'+x.id+'卷・'+x.done+'/8棒','Scroll '+x.id+' · '+x.done+'/8 legs');
+    const b=E('button',x.id===st.scroll?'on':'',label);b.type='button';b.onclick=()=>window.__rs.set(x.id);row.append(b);
+    const note=E('span','sub',choice?(choice.n?tr('可接第'+choice.n+'棒','Leg '+choice.n+' available'):choice.reason):tr('檢查中…','Checking…'));row.append(note)});
+  box.append(row)}
  function rD(){
  const h=$('#dHead'),body=$('#dBody'),m=$('main'),dr=tab==='D'&&live();h.textContent='';m.classList.toggle('dr',dr);if(!dr)m.classList.remove('pp');
  $('#send').textContent=demo?tr('結束試畫','End practice'):tr('交出這一棒','Submit this leg');
+ $('#dScrolls').hidden=true;
  if(demo){body.hidden=false;h.append(E('b','tm',tr('試畫','Practice')));h.append(E('span','sub',tr('隨便畫，不會交出','Nothing is submitted')));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('結束','End'),()=>endDemo()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
  if(!db||!uid){body.hidden=true;h.append(E('p',0,tr('需要登入並受主辦方邀請才能畫。','Sign in and get an invite from the host to draw.')));return}
  if(canW===false){body.hidden=true;h.append(E('p',0,tr('你現在是唯讀權限。請主辦方在分享選單裡把你設為 Contributor。','You have view-only access. Ask the host to make you a Contributor in the share menu.')));return}
  if(live()){body.hidden=false;h.append(E('b','tm',tr('第'+mine+'棒','Leg '+mine)));[[tr('長卷','Scroll'),()=>show('G')],[tr('復原','Undo'),()=>undo()],[tr('重做','Redo'),()=>redoF()],[tr('交出','Submit'),()=>send()]].forEach(([n,f],i)=>{const b=E('button','hb'+(i===3?' on':''),n);b.onclick=f;h.append(b)});return}
  body.hidden=true;
- const st=RS();
+ const st=RS();renderChoices(st);
  if(st&&!owner){
   loadChoices();
-   if(choices.length){h.append(E('b',0,tr('選擇要接棒的畫卷','Choose a scroll to draw in')));const row=E('div','row');choices.forEach(x=>{const b=E('button',x.id===st.scroll?'on':'',tr('第'+x.id+'卷・第'+x.n+'棒','Scroll '+x.id+' · Leg '+x.n));b.onclick=()=>window.__rs.set(x.id);row.append(b)});h.append(row)}
-  if(!choices.length&&!st.drawScroll){
+  if(!choices.some(x=>x.n)&&!st.drawScroll){
    const drew=Object.values(slots).some(d=>d.claimedBy===uid&&d.px),nx=Math.max(...st.scrolls.map(x=>x.id))+1;
    if(st.canOpen){
     h.append(E('b',0,drew?tr('你已經在這卷畫過一棒了，要開下一卷嗎？','You already drew in this scroll. Open the next one?'):tr('這卷滿了，要開下一卷嗎？','This scroll is full. Open the next one?')));
@@ -618,7 +634,7 @@ let choices=[],choiceLoading=false,choiceAt=0;
  }
  if(!st&&!owner&&Object.values(slots).some(d=>d.claimedBy===uid&&d.px)){h.append(E('p',0,tr('你已經畫過一棒了，去看長卷吧。','You already drew a leg. Go look at the scroll.')));return}
  const n=nxt();
- if(!n){h.append(E('p',0,all()?tr('8棒都畫完了，去長卷評分和猜測吧。','All 8 legs are done. Go rate and guess on the scroll.'):tr('上一棒還在畫，過一會兒再來。','The previous leg is still being drawn. Check back soon.')));return}
+ if(!n){h.append(E('p',0,tr('這卷目前無法接棒。請查看下方進行中的畫卷，選擇標示「可接」的卷。','This scroll is not available to draw in. Choose one marked available below.')));return}
  h.append(E('p',0,(st?tr('第'+st.scroll+'卷・','Scroll '+st.scroll+' · '):'')+tr('下一棒是第'+n+'棒：不限時間，只看得到上一棒的尾端。超過24小時沒有落筆，這一棒才會讓給別人。','Next up is leg '+n+'. No time limit, and you only see the tail of the previous leg. Only if you don’t draw for 24 hours does the leg go to someone else.')));
  h.append(E('p','sub',tr('交出後，你這一棒右端6格會給下一棒參考；如果下一棒是AI，這6格會交給圖像工具續畫。','After you submit, the rightmost 6 columns of your leg guide the next artist. If the next leg is the AI, those 6 columns go to an image tool to continue.')));
  const r=E('div','row'),b=E('button','on',tr('領取第'+n+'棒','Take leg '+n));b.onclick=claim;const t=E('button','',tr('先試畫看看','Try the canvas first'));t.onclick=startDemo;r.append(b,t);h.append(r);
