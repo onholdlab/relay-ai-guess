@@ -393,16 +393,16 @@ function renderHistory(){
   b.onclick=()=>{historySel=n;renderHistory()};segs.append(b)}
  const card=E('div','card');root.append(card);const v=(d.votes||[]).find(x=>x.me);
  const lock=!!(v&&d.meta&&d.meta.revealed)||canW===false;
- card.append(E('b',0,tr('第'+historySel+'棒','Leg '+historySel)));
+ const title=E('div','row');title.append(E('b',0,tr('第'+historySel+'棒','Leg '+historySel)));if(completed<T)title.append(E('span','sub',tr('接力進行中：已完成'+completed+'/8棒。','Relay in progress: '+completed+'/8 legs done.')));card.append(title);
  if(!completed){card.append(E('p','sub',tr('還沒有畫完的棒。','No completed legs yet.')));return}
  if(!doneH(historySel)){card.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  card.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),historyR[historySel],k=>{historyR[historySel]=k;renderHistory()},lock));
  const guess=E('button',historyG===historySel?'on':'',historyG===historySel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));
- guess.disabled=lock;guess.onclick=()=>{historyG=historySel;renderHistory()};card.append(guess);
- const fin=E('div','card');root.append(fin);
+ guess.disabled=lock;guess.onclick=()=>{historyG=historyG===historySel?null:historySel;renderHistory()};card.append(guess);
+ const confidence=E('div','row');[[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([name,k])=>{const b=E('button',historyC===k?'on':'',name);b.disabled=lock;b.onclick=()=>{historyC=k;renderHistory()};confidence.append(b)});card.append(confidence);
+ const fin=E('div');card.append(fin);
  if(lock){fin.append(E('p','sub',tr('這卷已揭曉或目前為唯讀。','This scroll is revealed or view-only.')));return}
- const row=E('div','row');row.append(E('span',0,tr('你的把握','Confidence')));
- [[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([name,k])=>{const b=E('button',historyC===k?'on':'',name);b.onclick=()=>{historyC=k;renderHistory()};row.append(b)});fin.append(row);
+
  const missing=ss.filter(x=>x.px&&!historyR[x.n]);
  const submit=E('button','on',v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));
  submit.disabled=!historyG||missing.length>0||!historyPre;fin.append(submit);
@@ -425,7 +425,7 @@ function rScr(){
  older.forEach(x=>{const b=E('button',x.id===historyId?'on':'',tr('第'+x.id+'卷','Scroll '+x.id));b.append(E('small',0,stat(x)));b.onclick=()=>openHistory(x.id);box.append(b)});
 }
 function rP(){
- const c=$('#pick');c.textContent='';const v=myV();
+ const c=$('#pick'),fin=$('#fin');c.textContent='';const v=myV();
  if(!myPre&&uid){try{myPre=+localStorage.getItem('rl_ai_pre_'+uid)||0}catch(e){}}
  if(v&&!gotV){gotV=true;myR=Object.assign({},v.r||{});myG=v.g;myC=v.c||2;myPre=v.pre||myPre}
  const lock=!!(v&&meta.revealed)||canW===false||!db,R=myR,g=myG;
@@ -435,7 +435,7 @@ function rP(){
  if(!done(sel)){c.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  c.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
  const b=E('button',g===sel?'on':'',g===sel?tr('我猜這棒是AI（已選）','I think this is the AI (selected)'):tr('我猜這棒是AI','I think this is the AI'));b.disabled=lock;b.onclick=()=>{myG=myG===sel?null:sel;rG()};c.append(b);
- const confidence=E('div','row');[[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const x=E('button',myC===k?'on':'',t);x.disabled=lock;x.onclick=()=>{myC=k;rG()};confidence.append(x)});c.append(confidence,$('#fin'));
+ const confidence=E('div','row');[[tr('沒把握','Unsure'),1],[tr('一般','Somewhat'),2],[tr('很確定','Very sure'),3]].forEach(([t,k])=>{const x=E('button',myC===k?'on':'',t);x.disabled=lock;x.onclick=()=>{myC=k;rG()};confidence.append(x)});c.append(confidence,fin);
 }
 function rF(){
  const c=$('#fin'),v=myV();c.textContent='';c.hidden=!nDone();if(!nDone())return;
