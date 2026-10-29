@@ -20,7 +20,7 @@ button,select,input{font:inherit;color:var(--ink);background:var(--chip);border:
 input{cursor:text}
 select{padding-right:8px}
 button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-button.on{background:var(--chip);color:var(--ink);box-shadow:inset 0 0 0 2px var(--acc)}
+button.on{background:var(--acc);color:var(--on)}
 button:disabled{opacity:.45;cursor:default}
 .card{background:var(--panel);padding:12px;margin:10px 0}
 .card p{margin:6px 0}
@@ -80,8 +80,8 @@ button:disabled{opacity:.45;cursor:default}
 .inner canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
 .seg{position:absolute;top:0;bottom:0;width:12.5%;border:0;background:transparent;min-height:0;padding:4px 6px;text-align:left;vertical-align:top;font-size:13px;text-shadow:0 0 3px var(--panel),0 0 3px var(--panel)}
 .seg.empty{background:repeating-linear-gradient(135deg,transparent 0 8px,var(--chip) 8px 10px)}
-.seg.sel{background:color-mix(in srgb,var(--acc) 18%,transparent)}
-.seg.empty.sel{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--acc) 12%,transparent) 0 8px,var(--chip) 8px 10px)}
+.seg.sel{background:transparent;box-shadow:inset 0 0 0 2px var(--acc)}
+.seg.empty.sel{background:transparent;box-shadow:inset 0 0 0 2px var(--acc)}
 .marks{position:relative;height:30px}
 .mk{position:absolute;top:4px;width:12.5%;text-align:center;font-size:15px;color:var(--acc)}
 .mk.ai{color:var(--bad)}
