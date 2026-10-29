@@ -323,7 +323,7 @@ const RGB=PAL.map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)));
 const AV=[".....hhhhhh.....", "....hhhhhhhh....", "....hyyhhyyh....", "....hssssssh....", "....skssssks....", "....ssssssss....", "....skwwwwks....", ".....skkkks.....", "......ssss......", "...pppwwwwppp...", "..pppppwwppppp..", ".ppppppwwpppppp.", ".pp.pyyyyyyp.pp.", ".pp.pppppppp.pp.", ".ss.pppmmppp.ss.", "....pppmmppp....", "....ppp..ppp....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "....kkk..kkk....", "...wwkk..kkww...", "...kkkk..kkkk...", "................"],AVC={h:4,y:7,s:15,k:4,w:0,p:14,m:13};
 const $=s=>document.querySelector(s),E=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 let db,uid,owner=false,canW=null,slots={},votes={},notes={},meta={},ai=null,upPx=null,upIso=0;
-let demo=false,tab='G',sel=1,myR={},myG=null,myC=2,myPre=0,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
+let demo=false,tab='G',sel=1,myR={},myG=null,myC=2,myPre=null,myRR=0,myPost=0,cur=new Uint8Array(W*H),ghost=null,hist=[],col=4,tool='pen',mine=0,mineAt=0,sent=false,down=false,last=null,lastBeat=0,redo=[],size=1,zoom=1,solid=false,grid=false,base=null,start=null,lastPt=null,pan=null,space=false,prev='pen';
 const msg=t=>$('#msg').textContent=t||'';
 const RS=()=>window.__rs&&window.__rs.get();
 const dk=n=>'rl'+(RS()&&RS().my?RS().my.scroll+'_':'')+n+uid;
@@ -373,12 +373,12 @@ function rG(){
  rP();rF();rTalk();
 }
 
-let historyId=null,historyData=null,historySel=1,historyR={},historyG=null,historyC=2,historyPre=0;
+let historyId=null,historyData=null,historySel=1,historyR={},historyG=null,historyC=2,historyPre=null;
 async function openHistory(id){
  historyId=id;$('#historyDetail').textContent=tr('讀取中…','Loading…');rScr();
  try{historyData=await window.__rs.history(id);historySel=1;
   const v=(historyData.votes||[]).find(x=>x.me);
-  historyR={...(v&&v.r||{})};historyG=v&&v.g||null;historyC=v&&v.c||2;historyPre=v&&v.pre||myPre||(myV()&&myV().pre)||0;
+  historyR={...(v&&v.r||{})};historyG=v&&v.g||null;historyC=v&&v.c||2;historyPre=v&&v.pre||myPre||(myV()&&myV().pre)||null;
   renderHistory();$('#historyDetail').scrollIntoView({behavior:'smooth',block:'start'});
  }catch(e){$('#historyDetail').textContent=tr('讀取失敗，請重試。','Loading failed. Try again.')}
 }
@@ -406,8 +406,7 @@ function renderHistory(){
 
  const missing=ss.filter(x=>x.px&&!historyR[x.n]);
  const submit=E('button','on',v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));
- submit.disabled=!historyG||missing.length>0||!historyPre;fin.append(submit);
- if(!historyPre)fin.append(E('p','sub',tr('請先在最新卷回答 AI 印象題，再回來投票。','Answer the AI question on the latest scroll first, then vote here.')));
+ submit.disabled=!historyG||missing.length>0;fin.append(submit);
  if(missing.length)fin.append(E('p','sub',tr('還差第'+missing.map(x=>x.n).join('、')+'棒沒評分。','Still to rate: leg '+missing.map(x=>x.n).join(', ')+'.')));
  submit.onclick=async()=>{submit.disabled=true;try{await window.__rs.vote(d.scroll,{r:historyR,g:historyG,c:historyC,pre:historyPre});
   historyData=await window.__rs.history(d.scroll);renderHistory();msg(tr('已提交。','Submitted.'))
@@ -427,12 +426,12 @@ function rScr(){
 }
 function rP(){
  const c=$('#pick'),fin=$('#fin');c.textContent='';const v=myV();
- if(!myPre&&uid){try{myPre=+localStorage.getItem('rl_ai_pre_'+uid)||0}catch(e){}}
+ if(!myPre&&uid){try{const saved=+localStorage.getItem('rl_ai_pre_'+uid);myPre=saved||null}catch(e){}}
  if(v&&!gotV){gotV=true;myR=Object.assign({},v.r||{});myG=v.g;myC=v.c||2;myPre=v.pre||myPre}
  const lock=!!(v&&meta.revealed)||canW===false||!db,R=myR,g=myG;
  if(!nDone()){c.append(E('p',0,tr('還沒有畫完的棒。第1棒畫完後就能開始評分和猜測。','No legs are finished yet. Rating and guessing open once leg 1 is done.')));return}
  if(nDone()===1){c.append(E('p','sub',tr('第二棒完成後開放預先投票。','Pre-voting opens after leg 2 is complete.')));return}
- if(!v&&!lock&&!myPre){c.append(E('b',0,tr('開始前一題','One question first')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;try{localStorage.setItem('rl_ai_pre_'+uid,String(k))}catch(e){}rG()}));return}
+ if(!lock&&!myPre){c.append(E('b',0,tr('AI題（選填，不影響投票）','AI question (optional; voting does not depend on it)')));c.append(scale(tr('你對AI做的東西印象如何？（1很差，5很好）','What do you think of things made by AI? (1 very bad, 5 very good)'),0,k=>{myPre=k;try{localStorage.setItem('rl_ai_pre_'+uid,String(k))}catch(e){}rG()}));}
  const titleRow=E('div','row');titleRow.append(E('b',0,tr('第'+sel+'棒','Leg '+sel)));if(!all())titleRow.append(E('span','sub',tr('接力進行中：已完成'+nDone()+'/8棒。','Relay in progress: '+nDone()+'/8 legs done.')));c.append(titleRow);
  if(!done(sel)){c.append(E('p','sub',tr('這一棒還沒畫完。','This leg isn’t finished yet.')));return}
  c.append(scale(tr('評分（1最低，5最高）','Rate it (1 lowest, 5 highest)'),R[sel],k=>{myR[sel]=k;const nx=nextUnrated();if(nx)sel=nx;rG()},lock));
@@ -443,7 +442,6 @@ function rF(){
  const c=$('#fin'),v=myV();c.textContent='';c.hidden=nDone()<2;if(nDone()<2)return;
  if(v&&meta.revealed){if(v.post)res(c);else post(c,v);return}
  if(canW===false||!db){c.append(E('p',0,tr('你現在是唯讀權限，只能看，不能提交。','You have view-only access and cannot submit.')));return}
- if(!myPre){c.hidden=true;return}
  const need=[];for(let n=1;n<=T;n++)if(done(n)&&!myR[n])need.push(n);
  if(v)c.append(E('p','sub',tr('已提交。揭曉前都可以改評分和猜測；有新的棒畫完時，記得也給它評分。','Submitted. You can change your ratings and guess until the reveal. Rate new legs as they finish.')));
  const s=E('button','on',!myG?tr('先選一棒當作AI','Pick a leg as the AI first'):v?tr('更新評分與猜測','Update ratings and guess'):tr('提交評分與猜測','Submit ratings and guess'));s.disabled=!myG||!done(myG)||need.length>0;c.append(s);
@@ -714,7 +712,7 @@ $('#oOpsUse').onclick=async()=>{const m=$('#oOpsMsg');if(!opsPx){$('#oOpsPrev').
 $('#oDraw').onclick=async()=>{const od=$('#oDraw'),m=$('#oDrawMsg');od.dataset.busy='1';rO();m.textContent=tr('8號在畫，約需半分鐘…','No. 8 is drawing, about 30 seconds…');try{const j=await window.__aiDraw();m.textContent=tr('畫好了，共'+j.strokes+'筆。','Done in '+j.strokes+' strokes.')}catch(e){m.textContent=tr('沒畫成：','Failed: ')+e.message}od.dataset.busy='';rO()};
 $('#oUse').onclick=async()=>{const t=Date.now();try{await db.doc('slots/s'+ai.n).set({n:ai.n,claimedBy:'ORG',claimedAt:t,lastAt:t,px:upPx,doneAt:t});msg(tr('AI那棒已上傳。','AI leg uploaded.'))}catch(e){msg(tr('上傳失敗，請重試。','Upload failed. Try again.'))}};
 two($('#oRev'),tr('再點一次，確認提前揭曉（不按的話，8棒畫完24小時後自動揭曉）','Tap again to reveal now (otherwise it reveals 24h after leg 8)'),async()=>{try{await db.doc('meta/state').set({revealed:true,aiSlot:ai.n})}catch(e){msg(tr('揭曉失敗，請重試。','Reveal failed. Try again.'))}});
-two($('#oClr'),tr('再點一次，清空全部','Tap again to clear everything'),async()=>{try{for(const k in slots)await db.doc('slots/'+k).delete();for(const k in votes)await db.doc('votes/'+k).delete();for(const k in notes)await db.doc('notes/'+k).delete();await db.doc('meta/state').delete();await db.doc('secret/ai').delete();myR={};myG=null;myPre=0;myRR=0;myPost=0;upPx=null;msg(tr('已清空。','Cleared.'))}catch(e){msg(tr('清空失敗，請重試。','Clear failed. Try again.'))}});
+two($('#oClr'),tr('再點一次，清空全部','Tap again to clear everything'),async()=>{try{for(const k in slots)await db.doc('slots/'+k).delete();for(const k in votes)await db.doc('votes/'+k).delete();for(const k in notes)await db.doc('notes/'+k).delete();await db.doc('meta/state').delete();await db.doc('secret/ai').delete();myR={};myG=null;myPre=null;myRR=0;myPost=0;upPx=null;msg(tr('已清空。','Cleared.'))}catch(e){msg(tr('清空失敗，請重試。','Clear failed. Try again.'))}});
 function rO(){
  if(!owner)return;
  const scrollBox=$('#oScrolls'),state=RS();if(scrollBox){scrollBox.textContent='';(state&&state.scrolls||[]).filter(x=>!x.finished).forEach(x=>{const b=E('button',x.id===state.scroll?'on':'',tr('第'+x.id+'卷・已完成'+x.done+'/8棒','Scroll '+x.id+' · '+x.done+'/8 legs'));b.type='button';b.onclick=()=>window.__rs.set(x.id);scrollBox.append(b)});}
@@ -734,7 +732,7 @@ function show(t){tab=t||tab;if(tab==='G')msg('');window.__relayDrawView=tab==='D
 function sync(){
  const st=RS(),lost=()=>{mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'))};
  if(st){
-  if(st.scroll!==curScroll){curScroll=st.scroll;myR={};myG=null;myC=2;myRR=0;myPost=0;gotV=false;sel=1}
+  if(st.scroll!==curScroll){curScroll=st.scroll;myR={};myG=null;myC=2;myPre=null;myRR=0;myPost=0;gotV=false;sel=1}
   const my=st.my;
   if(mine&&!sent&&!my)lost();
   if(my&&!mine&&!sent){if(st.scroll!==my.scroll){if(tab==='D')window.__rs.set(my.scroll);return}begin(my.n,my.at)}
