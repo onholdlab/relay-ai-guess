@@ -230,6 +230,7 @@ textarea{font:inherit;color:var(--ink);background:var(--chip);border:0;padding:8
 <section id="vO" hidden>
  <div class="card">
   <p id="oInfo"></p>
+  <div id="oScrolls" class="row"></div>
   <div class="row"><select id="oSel"></select><button id="oRes"></button></div>
   <p class="sub" id="i5"></p>
   <input type="file" id="oFile" accept="image/*">
@@ -698,6 +699,7 @@ two($('#oRev'),tr('再點一次，確認提前揭曉（不按的話，8棒畫完
 two($('#oClr'),tr('再點一次，清空全部','Tap again to clear everything'),async()=>{try{for(const k in slots)await db.doc('slots/'+k).delete();for(const k in votes)await db.doc('votes/'+k).delete();for(const k in notes)await db.doc('notes/'+k).delete();await db.doc('meta/state').delete();await db.doc('secret/ai').delete();myR={};myG=null;myPre=0;myRR=0;myPost=0;upPx=null;msg(tr('已清空。','Cleared.'))}catch(e){msg(tr('清空失敗，請重試。','Clear failed. Try again.'))}});
 function rO(){
  if(!owner)return;
+ const scrollBox=$('#oScrolls'),state=RS();if(scrollBox){scrollBox.textContent='';(state&&state.scrolls||[]).filter(x=>!x.finished).forEach(x=>{const b=E('button',x.id===state.scroll?'on':'',tr('第'+x.id+'卷・已完成'+x.done+'/8棒','Scroll '+x.id+' · '+x.done+'/8 legs'));b.onclick=()=>{SC=x.id;ver=null;poll()};scrollBox.append(b)});}
  $('#oInfo').textContent=(RS()?tr('第'+RS().scroll+'卷。','Scroll '+RS().scroll+'. '):'')+(ai?tr('AI那棒（只有你看得到）：第'+ai.n+'棒，','AI leg (only you can see this): leg '+ai.n+', ')+(done(ai.n)?tr('圖已上傳。','image uploaded.'):tr('還沒上傳圖。','no image yet.')):tr('還沒設定AI那棒。','AI leg not set yet.'))+(upPx?tr(' 預覽已清掉'+upIso+'個孤立像素。',' Preview removed '+upIso+' stray pixels.'):'')+tr(' 已有'+Object.keys(votes).length+'人提交。',' '+Object.keys(votes).length+' submitted.');
  $('#oRes').disabled=$('#oSel').disabled=!!ai;
  $('#oUse').disabled=!(ai&&upPx&&!done(ai.n));
@@ -709,7 +711,7 @@ function rO(){
 }
 
 /* shell */
-function show(t){tab=t||tab;if(tab==='G')msg('');window.__relayDrawView=tab==='D';if(tab==='G'){const s=RS(),latest=s&&(s.scrolls||[]).filter(x=>!x.finished).at(-1);if(latest&&s.scroll!==latest.id)window.__rs.set(latest.id)}['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
+function show(t){tab=t||tab;if(tab==='G')msg('');window.__relayDrawView=tab==='D'||tab==='O';if(tab==='G'){const s=RS(),latest=s&&(s.scrolls||[]).filter(x=>!x.finished).at(-1);if(latest&&s.scroll!==latest.id)window.__rs.set(latest.id)}['G','D','O'].forEach(k=>{$('#v'+k).hidden=k!==tab;$('#t'+k).classList.toggle('on',k===tab)});rD();rG();rO()}
 ['G','D','O'].forEach(k=>$('#t'+k).onclick=()=>show(k));
 function sync(){
  const st=RS(),lost=()=>{mine=0;msg(tr('超過24小時沒有落筆，這一棒已讓給別人。','You didn’t draw for 24 hours, so the leg went to someone else.'))};
