@@ -13,7 +13,7 @@
 1. 優先使用玩家選過並存入 localStorage 的語言。相容舊代碼 `zh`，對應檔案 `zh-Hant.json`。語言偏好的讀取和寫入皆在 try/catch 內；瀏覽器拒絕儲存時仍可運作。
 2. 沒有有效偏好時，navigator.language 以 zh 開頭使用 zh-Hant，其他使用 en。
 3. `OHLi18n.t(key, params)` 先查目前語言，再查 en；英文也缺少時顯示 key。空字串是有效內容，不會被當成缺少。
-4. 載入 JSON 失敗視為該語言缺少 key，套用相同 fallback。先等待 `OHLi18n.ready` 才啟動依賴文字的介面。請透過 HTTP 服務開啟，與 GitHub Pages 一樣；不要用 file:// 開啟。
+4. 載入 JSON 失敗或超過 8 秒（包含回應內容讀取）視為該語言缺少 key，套用相同 fallback，避免請求卡住時整個介面無法啟動。先等待 `OHLi18n.ready` 才啟動依賴文字的介面。請透過 HTTP 服務開啟，與 GitHub Pages 一樣；不要用 file:// 開啟。
 5. 原本的日、韓、西、德、法文與選單保留。既有字典仍提供這些語言，缺少的文字沿用既有英文 fallback；沒有新增它們的 JSON 或翻譯。
 
 插值使用 `{valueA}`、`{valueB}` 或 `{days}` 等具名參數。數字、分數與遊戲條件仍由原程式計算，不放進翻譯邏輯。

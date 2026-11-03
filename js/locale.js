@@ -14,10 +14,21 @@
   }
   function load(code) {
     if (!valid(code)) return Promise.resolve();
-    return fetch(new URL(code + '.json', base)).then(function (r) {
+    var controller = new AbortController(), timer;
+    var timeout = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        controller.abort();
+        reject(new Error('catalog timeout'));
+      }, 8000);
+    });
+    var request = fetch(new URL(code + '.json', base), { signal: controller.signal }).then(function (r) {
       if (!r.ok) throw new Error('catalog');
       return r.json();
-    }).then(function (data) { catalogs[code] = data; }).catch(function () {});
+    });
+    // Bound the response body as well as the initial request so ready always settles.
+    return Promise.race([request, timeout]).then(function (data) {
+      catalogs[code] = data;
+    }).catch(function () {}).finally(function () { clearTimeout(timer); });
   }
   function t(key, params, locale) {
     var code = normalize(locale || language), data = catalogs[code] || {};
