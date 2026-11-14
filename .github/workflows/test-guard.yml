@@ -1,0 +1,47 @@
+# 測試只能新增、harness 不能由 AI 自己改。檢查程式來自 main，PR 改不到它。
+# 來源：onholdlab/rules 的 templates/harness（2026-11-14）。
+name: test-guard
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+concurrency:
+  group: test-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      STATUS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # The pull_request_target job runs on main, so report a separate status on the PR head.
+      - name: Mark PR guard pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f context=test-guard -f state=pending -f target_url="$STATUS_URL" --silent
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      # 只取 PR 的 commit 來比對差異，不執行 PR 裡的任何程式
+      - run: git fetch --no-tags origin "refs/pull/$PR_NUMBER/head"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - run: node .github/scripts/test-guard.mjs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      - name: Report PR guard result
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f context=test-guard -f state="$RESULT" -f target_url="$STATUS_URL" --silent

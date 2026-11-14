@@ -1,0 +1,29 @@
+{
+  "testDirs": [
+    "tests",
+    "i18n/check.mjs"
+  ],
+  "harnessPaths": [
+    ".claude/hooks",
+    ".claude/settings.json",
+    ".github/workflows",
+    ".github/scripts",
+    "playwright.config.cjs",
+    "tests/server.cjs"
+  ],
+  "testCommand": "node --test && node i18n/check.mjs && npx playwright test",
+  "testTimeoutSec": 840,
+  "setupCheck": [
+    "node_modules/@playwright/test"
+  ],
+  "setupCommand": "npm i --no-save @playwright/test@1.56.1",
+  "stopLossAfter": 3,
+  "tailLines": 60,
+  "site": {
+    "pages": [
+      "index.html"
+    ],
+    "inappLock": "none",
+    "settleMs": 1500
+  }
+}

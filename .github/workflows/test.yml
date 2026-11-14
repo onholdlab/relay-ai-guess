@@ -1,0 +1,32 @@
+# 每個 PR 與 main 的每次 push 都自動跑測試（靜態規則、既有測試、Playwright 煙霧測試）。不經過任何 AI，不花 Claude 用量。
+# 來源：onholdlab/rules 的 templates/harness-web（2026-11-14）。
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: harness 自我測試
+        run: node --test .github/scripts/harness.test.mjs
+      - run: npm i --no-save @playwright/test@1.56.1
+      - run: node --test
+      - run: node i18n/check.mjs
+      - run: npx playwright test
+      # 失敗時把截圖留下來（Actions 頁面下方 Artifacts 可下載）
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
